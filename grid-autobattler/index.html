@@ -1,0 +1,89 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Grid Auto-Battler Prototype</title>
+  <link rel="stylesheet" href="style.css" />
+</head>
+<body>
+  <div class="app">
+    <header class="hud">
+      <div class="hud-block">
+        <span class="label">Level</span>
+        <span id="hud-level">1</span>
+      </div>
+      <div class="hud-block hud-wide">
+        <span class="label">HP</span>
+        <div class="bar bar--hp">
+          <div id="player-hp-fill" class="bar__fill"></div>
+        </div>
+        <span id="hud-hp-text" class="bar-text">100 / 100</span>
+      </div>
+      <div class="hud-block">
+        <span class="label">ATK</span>
+        <span id="hud-atk">15</span>
+      </div>
+      <div class="hud-block">
+        <span class="label">XP</span>
+        <div class="bar bar--xp">
+          <div id="hud-xp-fill" class="bar__fill"></div>
+        </div>
+        <span class="bar-text"><span id="hud-xp">0</span> / <span id="hud-xp-next">50</span></span>
+      </div>
+    </header>
+
+    <main class="main">
+      <div id="board" class="board" aria-label="Game grid"></div>
+    </main>
+
+    <div id="combat-strip" class="combat-strip hidden" aria-live="polite">
+      <div class="duel-lane">
+        <div class="duel-card duel-card--player">
+          <div class="duel-card__name">Player</div>
+          <div id="duel-player-stats" class="duel-card__stats">L1 · 100 HP</div>
+        </div>
+        <div class="duel-card duel-card--enemy">
+          <div id="duel-enemy-name" class="duel-card__name">Enemy</div>
+          <div id="duel-enemy-stats" class="duel-card__stats">L1 · 0 HP</div>
+        </div>
+      </div>
+      <div class="combat-strip__row">
+        <span id="combat-strip-label" class="combat-strip__label">Combat</span>
+        <div class="bar bar--attack bar--strip">
+          <div id="hero-attack-bar-fill" class="bar__fill"></div>
+        </div>
+        <span id="hero-attack-bar-text" class="bar-text">You 0%</span>
+      </div>
+      <div class="combat-strip__row">
+        <span id="enemy-speed-label" class="combat-strip__label">Enemy timer</span>
+        <div class="bar bar--enemy-timer bar--strip">
+          <div id="enemy-attack-bar-fill" class="bar__fill"></div>
+        </div>
+        <span id="enemy-attack-bar-text" class="bar-text">Foe 0%</span>
+      </div>
+      <p class="combat-strip__hint">Move away or press Esc to disengage. HP persists on the foe’s tile.</p>
+    </div>
+
+    <div id="items-panel" class="items-panel">
+      <div class="items-panel__title">Items</div>
+      <div id="items-list" class="items-list"></div>
+      <p class="items-help">Items drop on the ground. Walk over to equip (max 3). Use <strong>1/2/3</strong>. Destroy for XP with <strong>Shift+1/2/3</strong>. Cooldowns tick down by 1 whenever you attack.</p>
+    </div>
+
+    <p class="help">
+      <strong>Fog:</strong> hidden (black) → <strong>scouted</strong> (dim) when next to a tile you finish → <strong>cleared</strong> (bright) when you step on it.
+      <strong>Heal +1 HP</strong> whenever a tile becomes fully revealed (done).
+      <strong>ZOC:</strong> you cannot enter hidden tiles while orthogonally next to a living, visible monster.
+      Step onto monsters to stack and fight. Enemy types are <strong>Fast ⚡</strong>, <strong>Normal •</strong>, and <strong>Slow 🐢</strong>, each with its own attack timer and damage profile.
+    </p>
+  </div>
+
+  <div id="game-over" class="game-over hidden">
+    <p>You were defeated.</p>
+    <button type="button" id="btn-restart" class="btn">Restart</button>
+  </div>
+
+  <script src="main.js"></script>
+</body>
+</html>
