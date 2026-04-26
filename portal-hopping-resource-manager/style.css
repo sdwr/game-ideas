@@ -1,0 +1,161 @@
+:root {
+  --bg: #0f1420;
+  --panel: #1a2233;
+  --panel-border: #33425c;
+  --text: #e8edf7;
+  --muted: #93a2bb;
+  --accent: #5f8cff;
+  --base-col: #1f2a3d;
+  --gate-col: #2d243d;
+  --world-col: #203628;
+  font-family: Inter, system-ui, -apple-system, Segoe UI, Roboto, sans-serif;
+}
+
+* {
+  box-sizing: border-box;
+}
+
+body {
+  margin: 0;
+  min-height: 100vh;
+  background: var(--bg);
+  color: var(--text);
+}
+
+.app {
+  max-width: 1200px;
+  margin: 0 auto;
+  padding: 1rem;
+}
+
+.topbar h1 {
+  margin: 0 0 1rem;
+  font-size: 1.4rem;
+}
+
+.layout {
+  display: grid;
+  grid-template-columns: minmax(320px, 430px) 1fr;
+  gap: 0.9rem;
+  align-items: start;
+}
+
+.left-stack {
+  display: grid;
+  gap: 0.9rem;
+}
+
+.column {
+  border: 2px solid var(--panel-border);
+  border-radius: 10px;
+  padding: 0.8rem;
+  min-height: 420px;
+}
+
+.column--base {
+  background: var(--base-col);
+}
+
+.column--gate {
+  background: var(--gate-col);
+}
+
+.column--world {
+  background: var(--world-col);
+}
+
+.column h2 {
+  margin: 0 0 0.7rem;
+  font-size: 1.05rem;
+}
+
+.card {
+  background: var(--panel);
+  border: 1px solid var(--panel-border);
+  border-radius: 8px;
+  padding: 0.65rem;
+  margin-bottom: 0.7rem;
+}
+
+.card h3 {
+  margin: 0 0 0.5rem;
+  font-size: 0.95rem;
+}
+
+.resource-list {
+  margin: 0;
+  padding-left: 1rem;
+  line-height: 1.55;
+}
+
+.upgrade {
+  display: grid;
+  grid-template-columns: 1fr auto;
+  gap: 0.6rem;
+  align-items: center;
+  border: 1px solid var(--panel-border);
+  border-radius: 8px;
+  padding: 0.45rem;
+  margin-bottom: 0.55rem;
+}
+
+.upgrade p {
+  margin: 0.25rem 0 0;
+  font-size: 0.84rem;
+  color: var(--muted);
+}
+
+.cost {
+  color: #ffc670;
+}
+
+button {
+  border: 1px solid #5875b6;
+  background: #35508b;
+  color: #fff;
+  border-radius: 7px;
+  padding: 0.45rem 0.65rem;
+  cursor: pointer;
+  font: inherit;
+  font-size: 0.88rem;
+}
+
+button:hover {
+  background: #4160a2;
+}
+
+button:disabled {
+  opacity: 0.45;
+  cursor: not-allowed;
+}
+
+.controls {
+  display: grid;
+  gap: 0.45rem;
+}
+
+.actions-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 0.5rem;
+}
+
+.muted {
+  color: var(--muted);
+  font-size: 0.85rem;
+}
+
+.hidden {
+  visibility: hidden;
+  pointer-events: none;
+}
+
+@media (max-width: 960px) {
+  .layout {
+    grid-template-columns: 1fr;
+  }
+
+  .column {
+    min-height: auto;
+  }
+}

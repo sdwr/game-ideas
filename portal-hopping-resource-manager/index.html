@@ -1,0 +1,91 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Portal-Hopping Resource Manager</title>
+  <link rel="stylesheet" href="style.css" />
+</head>
+<body>
+  <div class="app">
+    <header class="topbar">
+      <h1>Portal-Hopping Resource Manager</h1>
+    </header>
+
+    <main class="layout">
+      <div class="left-stack">
+        <section class="column column--base" aria-labelledby="base-title">
+          <h2 id="base-title">Player Base</h2>
+
+          <div class="card">
+            <h3>Global Progress</h3>
+            <p class="muted">Build temple structures inside portals to gain persistent global XP.</p>
+            <div class="bar">
+              <div id="global-xp-fill" class="bar__fill"></div>
+            </div>
+            <p class="muted"><span id="global-xp-text">0 / 1000 XP</span></p>
+          </div>
+        </section>
+
+        <section class="column column--gate" aria-labelledby="gate-title">
+          <h2 id="gate-title">Portal Gate</h2>
+
+          <div class="card controls">
+            <button id="open-portal-t1-btn" type="button">Open Tier 1 Portal (Free)</button>
+            <button id="open-portal-t2-btn" type="button">Open Tier 2 Portal</button>
+            <button id="open-portal-t3-btn" type="button">Open Tier 3 Portal</button>
+            <button id="close-portal-btn" type="button">Close Portal</button>
+          </div>
+
+          <div class="card">
+            <h3>Current Portal Status</h3>
+            <p id="portal-status-text">Portal closed</p>
+            <p id="portal-type-text" class="muted">No active world</p>
+          </div>
+        </section>
+      </div>
+
+      <section id="portal-world" class="column column--world hidden" aria-labelledby="world-title">
+        <h2 id="world-title">Active Portal World</h2>
+
+        <div class="card">
+          <h3>Local Inventory</h3>
+          <ul class="resource-list">
+            <li>Local Wood: <span id="local-wood">0 / 0</span></li>
+            <li>Local Stone: <span id="local-stone">0 / 0</span></li>
+            <li>Local Food: <span id="local-food">0 / 0</span></li>
+            <li>Local Gold: <span id="local-gold">0 / 0</span></li>
+          </ul>
+        </div>
+
+        <div class="card">
+          <h3>Portal Upgrades (Reset on Close)</h3>
+          <div class="actions-grid">
+            <button id="upgrade-axes-btn" type="button">Portal Better Axes (12W)</button>
+            <button id="upgrade-picks-btn" type="button">Portal Reinforced Picks (12S)</button>
+            <button id="upgrade-auto-wood-btn" type="button">Auto Lumber Crew (+1/s) (140W)</button>
+            <button id="upgrade-auto-stone-btn" type="button">Auto Quarry Team (+1/s) (140S)</button>
+            <button id="upgrade-auto-food-btn" type="button">Auto Foragers (+1/s) (180F)</button>
+            <button id="upgrade-auto-gold-btn" type="button">Auto Prospectors (+1/s) (180G)</button>
+            <button id="upgrade-temple-btn" type="button">Build Stone Temple (+120 XP) (180W/180S)</button>
+            <button id="upgrade-feast-temple-btn" type="button">Build Feast Shrine (+180 XP) (220F)</button>
+            <button id="upgrade-golden-temple-btn" type="button">Build Golden Obelisk (+260 XP) (260G)</button>
+          </div>
+        </div>
+
+        <div class="card">
+          <h3>Local Actions</h3>
+          <div class="actions-grid">
+            <button id="action-chop-btn" type="button">Chop Wood</button>
+            <button id="action-mine-btn" type="button">Mine Stone</button>
+            <button id="action-forage-btn" type="button">Forage Food</button>
+            <button id="action-panning-btn" type="button">Pan for Gold</button>
+          </div>
+        </div>
+      </section>
+    </main>
+  </div>
+
+  <script src="main.js"></script>
+</body>
+</html>
