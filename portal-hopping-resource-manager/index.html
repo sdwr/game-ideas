@@ -17,13 +17,46 @@
         <section class="column column--base" aria-labelledby="base-title">
           <h2 id="base-title">Player Base</h2>
 
-          <div class="card">
-            <h3>Global Progress</h3>
-            <p class="muted">Build temple structures inside portals to gain persistent global XP.</p>
-            <div class="bar">
-              <div id="global-xp-fill" class="bar__fill"></div>
+          <div class="card xp-card">
+            <div class="xp-bar-label-row">
+              <span id="level-text">Level 1</span>
+              <span id="xp-bar-label" class="muted">0 / 1000 XP</span>
             </div>
-            <p class="muted"><span id="global-xp-text">0 / 1000 XP</span></p>
+            <div id="xp-bar" class="bar" role="progressbar" aria-valuemin="0" aria-valuemax="1000" aria-valuenow="0">
+              <div id="xp-bar-fill" class="bar__fill"></div>
+            </div>
+          </div>
+
+          <div class="card">
+            <h3>Base Resources</h3>
+            <p class="muted">Filled from return shipments. Rows stay hidden until a resource has been received at least once.</p>
+            <ul class="resource-rows base-resource-rows">
+              <li id="base-row-wood" class="resource-row hidden">
+                <span class="resource-row__label">Wood</span>
+                <span id="base-wood" class="resource-row__stock">0</span>
+              </li>
+              <li id="base-row-stone" class="resource-row hidden">
+                <span class="resource-row__label">Stone</span>
+                <span id="base-stone" class="resource-row__stock">0</span>
+              </li>
+              <li id="base-row-food" class="resource-row hidden">
+                <span class="resource-row__label">Food</span>
+                <span id="base-food" class="resource-row__stock">0</span>
+              </li>
+              <li id="base-row-gold" class="resource-row hidden">
+                <span class="resource-row__label">Gold</span>
+                <span id="base-gold" class="resource-row__stock">0</span>
+              </li>
+            </ul>
+          </div>
+
+          <div class="card">
+            <h3>Global Upgrades</h3>
+            <p class="muted">Skill points: <strong id="skill-points">0</strong> (gain 2 per level up)</p>
+            <div class="actions-grid global-upgrade-grid">
+              <button id="global-worker-btn" type="button" class="upgrade-btn">Extra Worker I (2 SP)</button>
+              <button id="global-return-unlock-btn" type="button" class="upgrade-btn">Unlock Return Portal (2 SP)</button>
+            </div>
           </div>
         </section>
 
@@ -46,42 +79,121 @@
       </div>
 
       <section id="portal-world" class="column column--world hidden" aria-labelledby="world-title">
-        <h2 id="world-title">Active Portal World</h2>
+          <h2 id="world-title">Active Portal World</h2>
 
-        <div class="card">
-          <h3>Local Inventory</h3>
-          <ul class="resource-list">
-            <li>Local Wood: <span id="local-wood">0 / 0</span></li>
-            <li>Local Stone: <span id="local-stone">0 / 0</span></li>
-            <li>Local Food: <span id="local-food">0 / 0</span></li>
-            <li>Local Gold: <span id="local-gold">0 / 0</span></li>
-          </ul>
-        </div>
-
-        <div class="card">
-          <h3>Portal Upgrades (Reset on Close)</h3>
-          <div class="actions-grid">
-            <button id="upgrade-axes-btn" type="button">Portal Better Axes (12W)</button>
-            <button id="upgrade-picks-btn" type="button">Portal Reinforced Picks (12S)</button>
-            <button id="upgrade-auto-wood-btn" type="button">Auto Lumber Crew (+1/s) (140W)</button>
-            <button id="upgrade-auto-stone-btn" type="button">Auto Quarry Team (+1/s) (140S)</button>
-            <button id="upgrade-auto-food-btn" type="button">Auto Foragers (+1/s) (180F)</button>
-            <button id="upgrade-auto-gold-btn" type="button">Auto Prospectors (+1/s) (180G)</button>
-            <button id="upgrade-temple-btn" type="button">Build Stone Temple (+120 XP) (180W/180S)</button>
-            <button id="upgrade-feast-temple-btn" type="button">Build Feast Shrine (+180 XP) (220F)</button>
-            <button id="upgrade-golden-temple-btn" type="button">Build Golden Obelisk (+260 XP) (260G)</button>
+          <div class="card">
+            <h3>Local Inventory & Workers</h3>
+            <p class="muted worker-summary">Workers: <span id="worker-pool">1</span> total · <span id="worker-free">1</span> unassigned</p>
+            <ul class="resource-rows" id="resource-rows">
+              <li id="row-wood" class="resource-row hidden" data-resource="wood">
+                <span class="resource-row__label">Wood</span>
+                <span id="local-wood" class="resource-row__stock">0 (0 left)</span>
+                <span class="resource-row__workers">
+                  <button type="button" class="btn-mini" data-worker-minus="wood">−</button>
+                  <span id="workers-wood">0</span>
+                  <button type="button" class="btn-mini" data-worker-plus="wood">+</button>
+                </span>
+              </li>
+              <li id="row-stone" class="resource-row hidden" data-resource="stone">
+                <span class="resource-row__label">Stone</span>
+                <span id="local-stone" class="resource-row__stock">0 (0 left)</span>
+                <span class="resource-row__workers">
+                  <button type="button" class="btn-mini" data-worker-minus="stone">−</button>
+                  <span id="workers-stone">0</span>
+                  <button type="button" class="btn-mini" data-worker-plus="stone">+</button>
+                </span>
+              </li>
+              <li id="row-food" class="resource-row hidden" data-resource="food">
+                <span class="resource-row__label">Food</span>
+                <span id="local-food" class="resource-row__stock">0 (0 left)</span>
+                <span class="resource-row__workers">
+                  <button type="button" class="btn-mini" data-worker-minus="food">−</button>
+                  <span id="workers-food">0</span>
+                  <button type="button" class="btn-mini" data-worker-plus="food">+</button>
+                </span>
+              </li>
+              <li id="row-gold" class="resource-row hidden" data-resource="gold">
+                <span class="resource-row__label">Gold</span>
+                <span id="local-gold" class="resource-row__stock">0 (0 left)</span>
+                <span class="resource-row__workers">
+                  <button type="button" class="btn-mini" data-worker-minus="gold">−</button>
+                  <span id="workers-gold">0</span>
+                  <button type="button" class="btn-mini" data-worker-plus="gold">+</button>
+                </span>
+              </li>
+            </ul>
           </div>
-        </div>
 
-        <div class="card">
-          <h3>Local Actions</h3>
-          <div class="actions-grid">
-            <button id="action-chop-btn" type="button">Chop Wood</button>
-            <button id="action-mine-btn" type="button">Mine Stone</button>
-            <button id="action-forage-btn" type="button">Forage Food</button>
-            <button id="action-panning-btn" type="button">Pan for Gold</button>
+          <div id="return-portal-card" class="card hidden">
+            <h3>Return Portal</h3>
+            <p class="muted">Send up to 50 of one local resource to the base (capped by what you hold). 30s cooldown.</p>
+            <div class="return-controls">
+              <label class="muted" for="return-resource-select">Resource</label>
+              <select id="return-resource-select"></select>
+              <button id="return-send-btn" type="button">Send to base</button>
+            </div>
+            <p id="return-cooldown-text" class="muted hidden">Cooldown: <span id="return-cooldown-seconds">0</span>s</p>
+            <div id="return-cooldown-bar" class="bar bar--cooldown hidden">
+              <div id="return-cooldown-fill" class="bar__fill bar__fill--cooldown"></div>
+            </div>
           </div>
-        </div>
+
+          <div class="card">
+            <h3>Portal Upgrades (Reset on Close)</h3>
+            <div class="actions-grid" id="upgrade-grid">
+              <button id="upgrade-wood-btn" type="button" class="upgrade-btn">Reinforced Wood I</button>
+              <button id="upgrade-stone-btn" type="button" class="upgrade-btn">Reinforced Stone I</button>
+              <button id="upgrade-food-btn" type="button" class="upgrade-btn">Reinforced Food I</button>
+              <button id="upgrade-gold-btn" type="button" class="upgrade-btn">Reinforced Gold I</button>
+            </div>
+          </div>
+
+          <div class="card">
+            <h3>Buildings</h3>
+            <p class="muted">Purchased buildings construct automatically over time (no workers required).</p>
+            <ul class="building-rows">
+              <li class="building-block">
+                <div id="building-row-stone" class="resource-row">
+                  <span class="resource-row__label">Stone Temple</span>
+                  <span id="building-stone-status" class="resource-row__stock">Built: 0 · Under construction: 0</span>
+                  <span class="resource-row__workers">
+                    <button id="buy-stone-btn" type="button">Buy</button>
+                  </span>
+                </div>
+                <div id="building-stone-bars" class="build-bars" aria-hidden="true"></div>
+              </li>
+              <li id="building-block-feast" class="building-block hidden">
+                <div id="building-row-feast" class="resource-row">
+                  <span class="resource-row__label">Feast Shrine</span>
+                  <span id="building-feast-status" class="resource-row__stock">Built: 0 · Under construction: 0</span>
+                  <span class="resource-row__workers">
+                    <button id="buy-feast-btn" type="button">Buy</button>
+                  </span>
+                </div>
+                <div id="building-feast-bars" class="build-bars"></div>
+              </li>
+              <li id="building-block-golden" class="building-block hidden">
+                <div id="building-row-golden" class="resource-row">
+                  <span class="resource-row__label">Golden Obelisk</span>
+                  <span id="building-golden-status" class="resource-row__stock">Built: 0 · Under construction: 0</span>
+                  <span class="resource-row__workers">
+                    <button id="buy-golden-btn" type="button">Buy</button>
+                  </span>
+                </div>
+                <div id="building-golden-bars" class="build-bars"></div>
+              </li>
+              <li id="building-row-return-wrap" class="building-block hidden">
+                <div id="building-row-return" class="resource-row">
+                  <span class="resource-row__label">Return Portal</span>
+                  <span id="building-return-status" class="resource-row__stock">Built: 0 · Under construction: 0</span>
+                  <span class="resource-row__workers">
+                    <button id="buy-return-btn" type="button">Buy</button>
+                  </span>
+                </div>
+                <div id="building-return-bars" class="build-bars"></div>
+              </li>
+            </ul>
+          </div>
       </section>
     </main>
   </div>
