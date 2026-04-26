@@ -65,6 +65,17 @@
   let playerXp = 0;
   let inventory = [];
   let itemGlowUntil = [0, 0, 0];
+  let playerShakeUntil = 0;
+  let enemyShakeUntil = 0;
+  let xpDisplay = 0;
+  let xpAnimRaf = null;
+  let xpPopUntil = 0;
+  let lastPlayerHpRatio = 1;
+  let lastEnemyHpRatio = 1;
+  let playerChunkRatio = 1;
+  let enemyChunkRatio = 1;
+  let playerHpChunkTimer = null;
+  let enemyHpChunkTimer = null;
 
   const INVENTORY_MAX = 3;
   const ITEM_DESTROY_XP = 12;
@@ -86,20 +97,24 @@
     combatStripLabel: document.getElementById('combat-strip-label'),
     gameOver: /** @type {HTMLDivElement} */ (document.getElementById('game-over')),
     hudLevel: document.getElementById('hud-level'),
-    hudHpFill: document.getElementById('player-hp-fill'),
-    hudHpText: document.getElementById('hud-hp-text'),
     hudAtk: document.getElementById('hud-atk'),
     hudXp: document.getElementById('hud-xp'),
     hudXpNext: document.getElementById('hud-xp-next'),
     hudXpFill: document.getElementById('hud-xp-fill'),
+    xpBar: /** @type {HTMLDivElement} */ (document.querySelector('.bar--xp')),
+    playerPanelStats: document.getElementById('player-panel-stats'),
+    playerPanelHpDamage: document.getElementById('player-panel-hp-damage'),
+    playerPanelHpFill: document.getElementById('player-panel-hp-fill'),
+    playerIcon: document.getElementById('player-icon'),
+    enemyPanelName: document.getElementById('enemy-panel-name'),
+    enemyPanelStats: document.getElementById('enemy-panel-stats'),
+    enemyPanelHpDamage: document.getElementById('enemy-panel-hp-damage'),
+    enemyPanelHpFill: document.getElementById('enemy-panel-hp-fill'),
+    enemyIcon: document.getElementById('enemy-icon'),
     heroAttackBarFill: document.getElementById('hero-attack-bar-fill'),
     heroAttackBarText: document.getElementById('hero-attack-bar-text'),
     enemyAttackBarFill: document.getElementById('enemy-attack-bar-fill'),
     enemyAttackBarText: document.getElementById('enemy-attack-bar-text'),
-    enemySpeedLabel: document.getElementById('enemy-speed-label'),
-    duelPlayerStats: document.getElementById('duel-player-stats'),
-    duelEnemyName: document.getElementById('duel-enemy-name'),
-    duelEnemyStats: document.getElementById('duel-enemy-stats'),
     itemsList: document.getElementById('items-list'),
     btnRestart: document.getElementById('btn-restart'),
   };
@@ -439,6 +454,78 @@
     fill.style.setProperty('--hp-fill', String(Math.max(0, Math.min(1, ratio))));
   }
 
+  function setChunkInstant(el, ratio) {
+    el.classList.add('bar__damage--instant');
+    el.style.setProperty('--damage-fill', String(ratio));
+    // Force style application before re-enabling transitions.
+    void el.offsetWidth;
+    el.classList.remove('bar__damage--instant');
+  }
+
+  function updateSidePanels(heroProgress, enemyProgress) {
+    const hpRatio = playerMaxHp > 0 ? playerHp / playerMaxHp : 0;
+    if (hpRatio < lastPlayerHpRatio) {
+      playerChunkRatio = lastPlayerHpRatio;
+      setChunkInstant(els.playerPanelHpDamage, playerChunkRatio);
+      if (playerHpChunkTimer) clearTimeout(playerHpChunkTimer);
+      playerHpChunkTimer = setTimeout(() => {
+        playerChunkRatio = hpRatio;
+        els.playerPanelHpDamage.style.setProperty('--damage-fill', String(playerChunkRatio));
+      }, 300);
+    } else if (hpRatio > lastPlayerHpRatio) {
+      // Healing should immediately remove any delayed damage chunk.
+      if (playerHpChunkTimer) clearTimeout(playerHpChunkTimer);
+      playerHpChunkTimer = null;
+      playerChunkRatio = hpRatio;
+    }
+    els.playerPanelHpDamage.style.setProperty('--damage-fill', String(playerChunkRatio));
+    lastPlayerHpRatio = hpRatio;
+    els.playerPanelHpFill.style.setProperty('--fill', String(Math.max(0, Math.min(1, hpRatio))));
+    els.playerPanelStats.textContent = `L${playerLevel} · ${Math.max(0, Math.ceil(playerHp))} / ${playerMaxHp} HP`;
+
+    const hp = Math.max(0, Math.min(1, heroProgress));
+    els.heroAttackBarFill.style.setProperty('--fill', String(hp));
+    els.heroAttackBarText.textContent = `Attack ${Math.round(hp * 100)}%`;
+
+    if (combat.active) {
+      const enemyCell = getCell(combat.monsterR, combat.monsterC);
+      const enemyLevel = enemyCell.monsterLevel ?? 0;
+      const enemyHp = Math.max(0, Math.ceil(enemyCell.monsterHp ?? 0));
+      const enemyMax = Math.max(1, enemyCell.monsterMaxHp ?? 1);
+      const enemyRatio = enemyHp / enemyMax;
+      if (enemyRatio < lastEnemyHpRatio) {
+        enemyChunkRatio = lastEnemyHpRatio;
+        setChunkInstant(els.enemyPanelHpDamage, enemyChunkRatio);
+        if (enemyHpChunkTimer) clearTimeout(enemyHpChunkTimer);
+        enemyHpChunkTimer = setTimeout(() => {
+          enemyChunkRatio = enemyRatio;
+          els.enemyPanelHpDamage.style.setProperty('--damage-fill', String(enemyChunkRatio));
+        }, 300);
+      } else if (enemyRatio > lastEnemyHpRatio) {
+        if (enemyHpChunkTimer) clearTimeout(enemyHpChunkTimer);
+        enemyHpChunkTimer = null;
+        enemyChunkRatio = enemyRatio;
+      }
+      els.enemyPanelHpDamage.style.setProperty('--damage-fill', String(enemyChunkRatio));
+      lastEnemyHpRatio = enemyRatio;
+      const speed = speedProfile(enemyCell.monsterType ?? 'normal');
+      els.enemyPanelName.textContent = `Enemy ${speed.icon} ${speed.label}`;
+      els.enemyPanelStats.textContent = `L${enemyLevel} · ${enemyHp} / ${enemyMax} HP`;
+      els.enemyPanelHpFill.style.setProperty('--fill', String(Math.max(0, Math.min(1, enemyRatio))));
+    } else {
+      els.enemyPanelName.textContent = 'Enemy';
+      els.enemyPanelStats.textContent = 'No target';
+      els.enemyPanelHpFill.style.setProperty('--fill', '0');
+      els.enemyPanelHpDamage.style.setProperty('--damage-fill', '0');
+      lastEnemyHpRatio = 0;
+      enemyChunkRatio = 0;
+    }
+
+    const ep = Math.max(0, Math.min(1, enemyProgress));
+    els.enemyAttackBarFill.style.setProperty('--fill', String(ep));
+    els.enemyAttackBarText.textContent = `Attack ${Math.round(ep * 100)}%`;
+  }
+
   function renderItems() {
     const now = Date.now();
     const rows = [];
@@ -461,6 +548,7 @@
   }
 
   function render() {
+    const now = Date.now();
     for (let r = 0; r < SIZE; r++) {
       for (let c = 0; c < SIZE; c++) {
         const div = cellEls[r][c];
@@ -505,40 +593,44 @@
       }
     }
 
-    const hpRatio = playerMaxHp > 0 ? playerHp / playerMaxHp : 0;
-    els.hudHpFill.style.setProperty('--fill', String(Math.max(0, Math.min(1, hpRatio))));
-    els.hudHpText.textContent = `${Math.max(0, Math.ceil(playerHp))} / ${playerMaxHp}`;
+    els.playerIcon.classList.toggle('unit-icon--shake', playerShakeUntil > now);
+    els.enemyIcon.classList.toggle('unit-icon--shake', enemyShakeUntil > now);
     els.hudLevel.textContent = String(playerLevel);
     els.hudAtk.textContent = String(playerAtk);
-    els.hudXp.textContent = String(playerXp);
+    els.hudXp.textContent = String(Math.floor(xpDisplay));
     const next = xpToNext();
     els.hudXpNext.textContent = String(next);
-    const xpRatio = next > 0 ? playerXp / next : 0;
+    const xpRatio = next > 0 ? xpDisplay / next : 0;
     els.hudXpFill.style.setProperty('--fill', String(Math.max(0, Math.min(1, xpRatio))));
+    els.xpBar.classList.toggle('xp-pop', xpPopUntil > Date.now());
+    const heroProgress = combat.active ? combat.heroAcc / HERO_ATTACK_MS : 0;
+    const enemyProgress = combat.active
+      ? combat.enemyAcc / Math.max(1, getCell(combat.monsterR, combat.monsterC).monsterAttackMs ?? HERO_ATTACK_MS)
+      : 0;
+    updateSidePanels(heroProgress, enemyProgress);
     renderItems();
   }
 
-  function syncMainHudHp() {
-    const hpRatio = playerMaxHp > 0 ? playerHp / playerMaxHp : 0;
-    els.hudHpFill.style.setProperty('--fill', String(Math.max(0, Math.min(1, hpRatio))));
-    els.hudHpText.textContent = `${Math.max(0, Math.ceil(playerHp))} / ${playerMaxHp}`;
+  function updateCombatStrip(heroProgress, enemyProgress) {
+    updateSidePanels(heroProgress, enemyProgress);
   }
 
-  function updateCombatStrip(heroProgress, enemyProgress) {
-    const hp = Math.max(0, Math.min(1, heroProgress));
-    const ep = Math.max(0, Math.min(1, enemyProgress));
-    els.heroAttackBarFill.style.setProperty('--fill', String(hp));
-    els.heroAttackBarText.textContent = `You ${Math.round(hp * 100)}%`;
-    els.enemyAttackBarFill.style.setProperty('--fill', String(ep));
-    els.enemyAttackBarText.textContent = `Foe ${Math.round(ep * 100)}%`;
-    els.duelPlayerStats.textContent = `L${playerLevel} · ${Math.max(0, Math.ceil(playerHp))} HP`;
-    const enemyCell = getCell(combat.monsterR, combat.monsterC);
-    const enemyLevel = enemyCell.monsterLevel ?? 0;
-    const enemyHp = Math.max(0, Math.ceil(enemyCell.monsterHp ?? 0));
-    const speed = speedProfile(enemyCell.monsterType ?? 'normal');
-    els.duelEnemyName.textContent = `Enemy ${speed.icon}`;
-    els.duelEnemyStats.textContent = `L${enemyLevel} · ${enemyHp} HP`;
-    syncMainHudHp();
+  function startXpAnimation(fromXp) {
+    if (xpAnimRaf != null) cancelAnimationFrame(xpAnimRaf);
+    xpDisplay = fromXp;
+    xpPopUntil = Date.now() + 450;
+    const step = () => {
+      xpDisplay += (playerXp - xpDisplay) * 0.22;
+      if (Math.abs(playerXp - xpDisplay) < 0.05) {
+        xpDisplay = playerXp;
+        xpAnimRaf = null;
+        render();
+        return;
+      }
+      render();
+      xpAnimRaf = requestAnimationFrame(step);
+    };
+    xpAnimRaf = requestAnimationFrame(step);
   }
 
   function stopCombatRaf() {
@@ -635,6 +727,7 @@
     const cell = getCell(combat.monsterR, combat.monsterC);
     const monsterLevel = cell.monsterLevel ?? 1;
     const xp = xpFromMonster(monsterLevel);
+    const oldXp = playerXp;
     cell.kind = 'empty';
     cell.monsterLevel = null;
     cell.monsterHp = null;
@@ -657,15 +750,14 @@
       revealAllTilesAsCompleted();
       els.combatStrip.classList.remove('hidden');
       els.combatStripLabel.textContent = 'Level complete';
-      els.enemySpeedLabel.textContent = 'All enemies defeated';
       els.heroAttackBarFill.style.setProperty('--fill', '1');
       els.enemyAttackBarFill.style.setProperty('--fill', '1');
-      els.heroAttackBarText.textContent = 'You 100%';
+      els.heroAttackBarText.textContent = 'Attack 100%';
       els.enemyAttackBarText.textContent = 'Done';
-      els.duelEnemyName.textContent = 'Enemy';
-      els.duelEnemyStats.textContent = 'Defeated';
+      els.enemyPanelName.textContent = 'Enemy';
+      els.enemyPanelStats.textContent = 'Defeated';
     }
-    render();
+    startXpAnimation(oldXp);
   }
 
   function onPlayerDefeated() {
@@ -702,6 +794,8 @@
     const poisonDamage = poisonHits * cell.poisonDamage;
     cell.poisonTicks = Math.max(0, cell.poisonTicks - heroHits);
     const outgoing = heroHits * playerAtk + poisonDamage;
+    if (incoming > 0) playerShakeUntil = Date.now() + 260;
+    if (outgoing > 0) enemyShakeUntil = Date.now() + 260;
     playerHp -= incoming;
     cell.monsterHp = Math.max(0, (cell.monsterHp ?? 0) - outgoing);
 
@@ -755,9 +849,9 @@
     const lv = cell.monsterLevel ?? 1;
     const atk = cell.monsterAtk ?? 0;
     const speed = speedProfile(cell.monsterType ?? 'normal');
-    els.combatStripLabel.textContent = `vs L${lv} · ${atk} ATK`;
-    els.enemySpeedLabel.textContent = `Enemy ${speed.label}`;
-    els.combatStrip.classList.remove('hidden');
+    els.combatStripLabel.textContent = '';
+    els.enemyPanelName.textContent = `Enemy ${speed.icon} ${speed.label}`;
+    els.combatStrip.classList.add('hidden');
     updateCombatStrip(0, 0);
     render();
     combat.rafId = requestAnimationFrame(combatLoop);
@@ -853,6 +947,11 @@
     playerHp = 100;
     playerAtk = 15;
     playerXp = 0;
+    xpDisplay = 0;
+    if (xpAnimRaf != null) {
+      cancelAnimationFrame(xpAnimRaf);
+      xpAnimRaf = null;
+    }
     els.gameOver.classList.add('hidden');
     placeMonstersAndPlayer();
     render();
@@ -861,6 +960,7 @@
   function init() {
     ensureDomCells();
     placeMonstersAndPlayer();
+    xpDisplay = playerXp;
     render();
     window.addEventListener('keydown', onKeyDown);
     els.btnRestart.addEventListener('click', resetGame);

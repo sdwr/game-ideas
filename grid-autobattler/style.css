@@ -41,12 +41,12 @@ body {
 
 .app {
   width: 100%;
-  max-width: 520px;
+  max-width: 920px;
 }
 
 .hud {
   display: grid;
-  grid-template-columns: auto 1fr auto auto;
+  grid-template-columns: auto auto 1fr;
   gap: 0.75rem 1rem;
   align-items: center;
   margin-bottom: 1rem;
@@ -83,7 +83,23 @@ body {
   border: 1px solid var(--grid-line);
 }
 
+.bar__damage {
+  position: absolute;
+  inset: 0;
+  transform-origin: left center;
+  transform: scaleX(var(--damage-fill, 0));
+  background: #d63f3f;
+  border-radius: 4px;
+  pointer-events: none;
+  transition: transform 0.62s ease-out;
+}
+
+.bar__damage--instant {
+  transition: none !important;
+}
+
 .bar__fill {
+  position: relative;
   height: 100%;
   width: 100%;
   transform-origin: left center;
@@ -96,6 +112,7 @@ body {
   background: linear-gradient(90deg, var(--hp-low), var(--hp-mid) 50%, var(--hp-high));
   background-size: 200% 100%;
   background-position: calc((1 - var(--fill, 0)) * 100%) 0;
+  transition: transform 0.22s ease, background 0.25s ease;
 }
 
 .bar--attack .bar__fill {
@@ -110,6 +127,11 @@ body {
 
 .bar--xp .bar__fill {
   background: linear-gradient(90deg, #5e5bff, var(--xp-bar));
+  transition: transform 0.45s ease, background 0.25s ease, box-shadow 0.3s ease;
+}
+
+.bar--xp.xp-pop .bar__fill {
+  box-shadow: 0 0 12px rgba(125, 108, 255, 0.7);
 }
 
 .bar--strip {
@@ -131,6 +153,55 @@ body {
 .main {
   display: flex;
   justify-content: center;
+}
+
+.battle-shell {
+  display: grid;
+  grid-template-columns: 180px minmax(320px, 440px) 180px;
+  gap: 0.7rem;
+  align-items: stretch;
+}
+
+.side-panel {
+  background: var(--panel);
+  border: 1px solid var(--grid-line);
+  border-radius: 10px;
+  padding: 0.55rem;
+  display: flex;
+  flex-direction: column;
+  gap: 0.4rem;
+}
+
+.side-panel--enemy {
+  text-align: right;
+}
+
+.unit-icon {
+  font-size: 2rem;
+  line-height: 1;
+}
+
+.unit-icon--shake {
+  animation: unit-shake 0.28s linear;
+}
+
+@keyframes unit-shake {
+  0% { transform: translateX(0); }
+  25% { transform: translateX(-3px) rotate(-2deg); }
+  50% { transform: translateX(3px) rotate(2deg); }
+  75% { transform: translateX(-2px) rotate(-1deg); }
+  100% { transform: translateX(0); }
+}
+
+.side-panel__name {
+  font-size: 0.82rem;
+  font-weight: 700;
+  color: #dbe8fc;
+}
+
+.side-panel__stats {
+  font-size: 0.72rem;
+  color: #9db1cf;
 }
 
 .board {
@@ -272,49 +343,12 @@ body {
   border-radius: 10px;
 }
 
-.duel-lane {
-  display: grid;
-  grid-template-columns: 1fr 1fr;
-  gap: 0.75rem;
-  margin-bottom: 0.5rem;
-}
-
-.duel-card {
-  border: 1px solid #33445d;
-  border-radius: 8px;
-  padding: 0.35rem 0.5rem;
-  background: #1b2635;
-}
-
-.duel-card--player {
-  justify-self: start;
-}
-
-.duel-card--enemy {
-  justify-self: end;
-  text-align: right;
-}
-
-.duel-card__name {
-  font-size: 0.74rem;
-  color: #dce7fb;
-  font-weight: 700;
-}
-
-.duel-card__stats {
-  font-size: 0.7rem;
-  color: #9eb1cf;
-}
-
 .combat-strip.hidden {
   display: none;
 }
 
 .combat-strip__row {
-  display: flex;
-  align-items: center;
-  gap: 0.65rem;
-  margin-bottom: 0.2rem;
+  display: block;
 }
 
 .combat-strip__label {

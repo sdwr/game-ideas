@@ -13,18 +13,11 @@
         <span class="label">Level</span>
         <span id="hud-level">1</span>
       </div>
-      <div class="hud-block hud-wide">
-        <span class="label">HP</span>
-        <div class="bar bar--hp">
-          <div id="player-hp-fill" class="bar__fill"></div>
-        </div>
-        <span id="hud-hp-text" class="bar-text">100 / 100</span>
-      </div>
       <div class="hud-block">
         <span class="label">ATK</span>
         <span id="hud-atk">15</span>
       </div>
-      <div class="hud-block">
+      <div class="hud-block hud-wide">
         <span class="label">XP</span>
         <div class="bar bar--xp">
           <div id="hud-xp-fill" class="bar__fill"></div>
@@ -34,33 +27,42 @@
     </header>
 
     <main class="main">
-      <div id="board" class="board" aria-label="Game grid"></div>
+      <div class="battle-shell">
+        <aside class="side-panel side-panel--player">
+          <div id="player-icon" class="unit-icon">🛡️</div>
+          <div class="side-panel__name">Player</div>
+          <div id="player-panel-stats" class="side-panel__stats">L1 · 100 / 100 HP</div>
+          <div class="bar bar--hp">
+            <div id="player-panel-hp-damage" class="bar__damage"></div>
+            <div id="player-panel-hp-fill" class="bar__fill"></div>
+          </div>
+          <div class="bar bar--attack">
+            <div id="hero-attack-bar-fill" class="bar__fill"></div>
+          </div>
+          <div id="hero-attack-bar-text" class="bar-text">Attack 0%</div>
+        </aside>
+
+        <div id="board" class="board" aria-label="Game grid"></div>
+
+        <aside class="side-panel side-panel--enemy">
+          <div id="enemy-icon" class="unit-icon">👾</div>
+          <div id="enemy-panel-name" class="side-panel__name">Enemy</div>
+          <div id="enemy-panel-stats" class="side-panel__stats">No target</div>
+          <div class="bar bar--hp">
+            <div id="enemy-panel-hp-damage" class="bar__damage"></div>
+            <div id="enemy-panel-hp-fill" class="bar__fill"></div>
+          </div>
+          <div class="bar bar--enemy-timer">
+            <div id="enemy-attack-bar-fill" class="bar__fill"></div>
+          </div>
+          <div id="enemy-attack-bar-text" class="bar-text">Attack 0%</div>
+        </aside>
+      </div>
     </main>
 
     <div id="combat-strip" class="combat-strip hidden" aria-live="polite">
-      <div class="duel-lane">
-        <div class="duel-card duel-card--player">
-          <div class="duel-card__name">Player</div>
-          <div id="duel-player-stats" class="duel-card__stats">L1 · 100 HP</div>
-        </div>
-        <div class="duel-card duel-card--enemy">
-          <div id="duel-enemy-name" class="duel-card__name">Enemy</div>
-          <div id="duel-enemy-stats" class="duel-card__stats">L1 · 0 HP</div>
-        </div>
-      </div>
       <div class="combat-strip__row">
         <span id="combat-strip-label" class="combat-strip__label">Combat</span>
-        <div class="bar bar--attack bar--strip">
-          <div id="hero-attack-bar-fill" class="bar__fill"></div>
-        </div>
-        <span id="hero-attack-bar-text" class="bar-text">You 0%</span>
-      </div>
-      <div class="combat-strip__row">
-        <span id="enemy-speed-label" class="combat-strip__label">Enemy timer</span>
-        <div class="bar bar--enemy-timer bar--strip">
-          <div id="enemy-attack-bar-fill" class="bar__fill"></div>
-        </div>
-        <span id="enemy-attack-bar-text" class="bar-text">Foe 0%</span>
       </div>
       <p class="combat-strip__hint">Move away or press Esc to disengage. HP persists on the foe’s tile.</p>
     </div>
@@ -73,7 +75,7 @@
 
     <p class="help">
       <strong>Fog:</strong> hidden (black) → <strong>scouted</strong> (dim) when next to a tile you finish → <strong>cleared</strong> (bright) when you step on it.
-      <strong>Heal +1 HP</strong> whenever a tile becomes fully revealed (done).
+      <strong>Heal +3 HP</strong> whenever a tile becomes fully revealed (done).
       <strong>ZOC:</strong> you cannot enter hidden tiles while orthogonally next to a living, visible monster.
       Step onto monsters to stack and fight. Enemy types are <strong>Fast ⚡</strong>, <strong>Normal •</strong>, and <strong>Slow 🐢</strong>, each with its own attack timer and damage profile.
     </p>
