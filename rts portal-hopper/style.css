@@ -93,6 +93,11 @@ button:disabled {
   margin-bottom: 8px;
 }
 
+.command-log {
+  margin: 0;
+  font-size: 0.85rem;
+}
+
 .world-layout {
   display: grid;
   grid-template-columns: 260px 1fr;
@@ -189,6 +194,10 @@ button:disabled {
   font-size: 0.65rem;
 }
 
+.constructing {
+  pointer-events: none;
+}
+
 .house {
   width: 40px;
   height: 40px;
@@ -223,6 +232,22 @@ button:disabled {
 
 .worker.worker-selected {
   box-shadow: 0 0 0 3px rgba(135, 190, 255, 0.9);
+}
+
+.construction-progress {
+  width: 44px;
+  height: 6px;
+  border: 1px solid #2a2f3a;
+  border-radius: 4px;
+  background: rgba(20, 20, 25, 0.75);
+  transform: translate(-50%, -50%);
+  pointer-events: none;
+}
+
+.construction-progress__fill {
+  height: 100%;
+  border-radius: 3px;
+  background: #7fd0ff;
 }
 
 .worker.carrying {

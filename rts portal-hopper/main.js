@@ -23,10 +23,11 @@
   var BASE_STONE_MIN_DISTANCE = 190;
   var drag = { active: false, moved: false, startX: 0, startY: 0, curX: 0, curY: 0 };
   var suppressClickOnce = false;
+  var commandLogText = 'No commands yet.';
   var BUILDINGS = {
-    house: { baseCost: { wood: 40, stone: 20 }, scaling: 1.8, radius: 24, className: 'house', label: 'House' },
-    depot: { baseCost: { wood: 60, stone: 40 }, scaling: 1.8, radius: 28, className: 'depot', label: 'Depot' },
-    temple: { cost: { wood: 120, stone: 120 }, radius: 34, className: 'temple', label: 'Temple' },
+    house: { baseCost: { wood: 40, stone: 20 }, scaling: 1.8, radius: 24, className: 'house', label: 'House', buildMs: 15000 },
+    depot: { baseCost: { wood: 60, stone: 40 }, scaling: 1.8, radius: 28, className: 'depot', label: 'Depot', buildMs: 15000 },
+    temple: { cost: { wood: 120, stone: 120 }, radius: 34, className: 'temple', label: 'Temple', buildMs: 30000 },
   };
   var placement = {
     type: null,
@@ -42,6 +43,7 @@
     upgradePoints: document.getElementById('upgrade-points'),
     buyWorkerUpgradeBtn: document.getElementById('buy-worker-upgrade-btn'),
     backToGlobalBtn: document.getElementById('back-to-global-btn'),
+    commandLog: document.getElementById('command-log'),
     map: document.getElementById('map'),
     base: document.getElementById('base'),
     entityLayer: document.getElementById('entity-layer'),
@@ -220,6 +222,7 @@
       nodes: [],
       workers: [],
       structures: [],
+      constructions: [],
       base: basePoint,
       runTimeMs: 0,
       selectedWorkerIds: [],
@@ -278,6 +281,7 @@
     renderGlobal();
     placement.type = null;
     drag.active = false;
+    commandLogText = 'No commands yet.';
   }
 
   function distance(a, b) {
@@ -396,10 +400,28 @@
   function tick(dtMs) {
     if (!WORLD) return;
     WORLD.runTimeMs += dtMs;
+    tickConstructions(dtMs);
     WORLD.workers.forEach(function (worker) {
       workerStep(worker, dtMs);
     });
     renderWorld();
+  }
+
+  function tickConstructions(dtMs) {
+    for (var i = WORLD.constructions.length - 1; i >= 0; i -= 1) {
+      var c = WORLD.constructions[i];
+      c.elapsedMs += dtMs;
+      var cfg = BUILDINGS[c.type];
+      if (c.elapsedMs >= cfg.buildMs) {
+        WORLD.constructions.splice(i, 1);
+        WORLD.structures.push({ type: c.type, x: c.x, y: c.y });
+        if (c.type === 'house') {
+          spawnWorkerNear({ x: c.x, y: c.y });
+        } else if (c.type === 'temple') {
+          gainXp(TEMPLE_XP);
+        }
+      }
+    }
   }
 
   function startTick() {
@@ -457,6 +479,29 @@
       els.entityLayer.appendChild(d);
     });
 
+    WORLD.constructions.forEach(function (c) {
+      var cfg = BUILDINGS[c.type];
+      var frac = Math.min(1, c.elapsedMs / cfg.buildMs);
+
+      var b = document.createElement('div');
+      b.className = 'entity ' + cfg.className + ' constructing';
+      b.style.left = c.x + 'px';
+      b.style.top = c.y + 'px';
+      b.style.opacity = String(0.4 + frac * 0.6);
+      b.textContent = cfg.label;
+      els.entityLayer.appendChild(b);
+
+      var bar = document.createElement('div');
+      bar.className = 'entity construction-progress';
+      bar.style.left = c.x + 'px';
+      bar.style.top = (c.y + cfg.radius + 12) + 'px';
+      var fill = document.createElement('div');
+      fill.className = 'construction-progress__fill';
+      fill.style.width = Math.round(frac * 100) + '%';
+      bar.appendChild(fill);
+      els.entityLayer.appendChild(bar);
+    });
+
     WORLD.workers.forEach(function (worker) {
       var w = document.createElement('div');
       var selected = WORLD.selectedWorkerIds.indexOf(worker.id) !== -1;
@@ -466,6 +511,7 @@
       w.style.left = worker.x + 'px';
       w.style.top = worker.y + 'px';
       w.title = worker.state + (worker.targetType ? ' (' + worker.targetType + ')' : '');
+      w.setAttribute('data-worker-id', worker.id);
       els.entityLayer.appendChild(w);
     });
   }
@@ -515,6 +561,9 @@
     updateBuildButtons();
     renderBuildPreview();
     renderSelectionBox();
+    if (els.commandLog) {
+      els.commandLog.textContent = commandLogText;
+    }
   }
 
   function canAffordBuild(type) {
@@ -560,7 +609,11 @@
 
   function setPlacementMode(type) {
     if (!WORLD) return;
-    if (!canAffordBuild(type)) return;
+    if (!canAffordBuild(type)) {
+      commandLogText = 'Not enough resources to start ' + BUILDINGS[type].label + '.';
+      renderWorld();
+      return;
+    }
     placement.type = type;
     placement.x = WORLD.base.x;
     placement.y = WORLD.base.y - 90;
@@ -614,9 +667,16 @@
   }
 
   function assignSelectedWorkersToNode(nodeId) {
-    if (!WORLD || !WORLD.selectedWorkerIds.length) return;
+    if (!WORLD || !WORLD.selectedWorkerIds.length) {
+      commandLogText = 'No workers selected.';
+      return;
+    }
     var node = WORLD.nodes.find(function (n) { return n.id === nodeId; });
-    if (!node || node.amount <= 0) return;
+    if (!node || node.amount <= 0) {
+      commandLogText = 'Target node is depleted.';
+      return;
+    }
+    var assigned = 0;
     WORLD.workers.forEach(function (w) {
       if (WORLD.selectedWorkerIds.indexOf(w.id) === -1) return;
       if (w.carryingAmount > 0) return;
@@ -624,7 +684,13 @@
       w.targetNodeId = node.id;
       w.state = 'toNode';
       w.gatherMs = 0;
+      assigned += 1;
     });
+    if (assigned > 0) {
+      commandLogText = 'Assigned ' + assigned + ' worker' + (assigned === 1 ? '' : 's') + ' to ' + node.type.toUpperCase() + ' node.';
+    } else {
+      commandLogText = 'Selected workers are currently carrying resources.';
+    }
   }
 
   function canPlaceBuildingAt(type, x, y) {
@@ -646,18 +712,20 @@
     });
     if (overlapsStructure) return false;
 
+    var overlapsConstruction = WORLD.constructions.some(function (s) {
+      var sr = BUILDINGS[s.type].radius;
+      return distance({ x: x, y: y }, s) < r + sr + 4;
+    });
+    if (overlapsConstruction) return false;
+
     return true;
   }
 
   function placeBuilding(type, x, y) {
     if (!canPlaceBuildingAt(type, x, y)) return false;
     spendBuildCost(type);
-    WORLD.structures.push({ type: type, x: x, y: y });
-    if (type === 'house') {
-      spawnWorkerNear({ x: x, y: y });
-    } else if (type === 'temple') {
-      gainXp(TEMPLE_XP);
-    }
+    WORLD.constructions.push({ type: type, x: x, y: y, elapsedMs: 0 });
+    commandLogText = BUILDINGS[type].label + ' construction started.';
     return true;
   }
 
@@ -673,9 +741,10 @@
     var houseOK = canAffordBuild('house');
     var depotOK = canAffordBuild('depot');
     var templeOK = canAffordBuild('temple');
-    els.buildHouseBtn.disabled = !houseOK;
-    els.buildDepotBtn.disabled = !depotOK;
-    els.buildTempleBtn.disabled = !templeOK;
+    // Keep buttons clickable; preview/placement remains affordability-gated.
+    els.buildHouseBtn.disabled = false;
+    els.buildDepotBtn.disabled = false;
+    els.buildTempleBtn.disabled = false;
     els.buildHouseBtn.classList.toggle('build-unaffordable', !houseOK);
     els.buildDepotBtn.classList.toggle('build-unaffordable', !depotOK);
     els.buildTempleBtn.classList.toggle('build-unaffordable', !templeOK);
@@ -804,26 +873,30 @@
         return;
       }
 
-      var nodeEl = ev.target.closest('[data-node-id]');
-      if (nodeEl && WORLD.selectedWorkerIds.length) {
-        assignSelectedWorkersToNode(nodeEl.getAttribute('data-node-id'));
-        renderWorld();
-        return;
-      }
-
       WORLD.selectedWorkerIds = [];
       renderWorld();
     });
 
-    els.entityLayer.addEventListener('click', function (ev) {
+    els.entityLayer.addEventListener('mousedown', function (ev) {
       if (!WORLD || placement.type) return;
+      if (ev.button !== 0) return;
+      var workerEl = ev.target.closest('[data-worker-id]');
+      if (workerEl) {
+        WORLD.selectedWorkerIds = [workerEl.getAttribute('data-worker-id')];
+        commandLogText = 'Selected 1 worker.';
+        renderWorld();
+        ev.preventDefault();
+        ev.stopPropagation();
+        return;
+      }
       var nodeEl = ev.target.closest('[data-node-id]');
       if (!nodeEl) return;
+      ev.preventDefault();
+      ev.stopPropagation();
       if (WORLD.selectedWorkerIds.length) {
         assignSelectedWorkersToNode(nodeEl.getAttribute('data-node-id'));
         renderWorld();
       }
-      ev.stopPropagation();
     });
 
     window.addEventListener('keydown', function (ev) {
