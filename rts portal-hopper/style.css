@@ -78,6 +78,12 @@ button.build-unaffordable {
   color: #bcc9e4;
 }
 
+button.build-active {
+  background: #4a6fc0;
+  border-color: #9ec0ff;
+  box-shadow: 0 0 0 2px rgba(158, 192, 255, 0.35);
+}
+
 button:disabled {
   cursor: not-allowed;
   background: #2f4577;

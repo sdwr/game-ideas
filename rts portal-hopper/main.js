@@ -24,9 +24,12 @@
   var drag = { active: false, moved: false, startX: 0, startY: 0, curX: 0, curY: 0 };
   var suppressClickOnce = false;
   var commandLogText = 'No commands yet.';
+  var DEBUG_BUILD = false;
+  var debugSeq = 0;
+  var lastPreviewDebugState = '';
   var BUILDINGS = {
     house: { baseCost: { wood: 40, stone: 20 }, scaling: 1.8, radius: 24, className: 'house', label: 'House', buildMs: 15000 },
-    depot: { baseCost: { wood: 60, stone: 40 }, scaling: 1.8, radius: 28, className: 'depot', label: 'Depot', buildMs: 15000 },
+    depot: { baseCost: { wood: 60, stone: 40 }, scaling: 1.8, radius: 28, className: 'depot', label: 'Depot', buildMs: 10000 },
     temple: { cost: { wood: 120, stone: 120 }, radius: 34, className: 'temple', label: 'Temple', buildMs: 30000 },
   };
   var placement = {
@@ -35,6 +38,7 @@
     y: 0,
     valid: false,
   };
+  var lastMouseMapPos = { x: 0, y: 0 };
 
   var els = {
     globalScreen: document.getElementById('global-screen'),
@@ -90,6 +94,34 @@
 
   function rand(min, max) {
     return Math.floor(Math.random() * (max - min + 1)) + min;
+  }
+
+  function dbg(label, extra) {
+    if (!DEBUG_BUILD) return;
+    debugSeq += 1;
+    var payload = {
+      seq: debugSeq,
+      t: Date.now(),
+      label: label,
+      placementType: placement && placement.type,
+      placementValid: placement && placement.valid,
+      dragActive: drag && drag.active,
+      dragMoved: drag && drag.moved,
+      suppressClickOnce: suppressClickOnce,
+      selectedWorkers: WORLD && WORLD.selectedWorkerIds ? WORLD.selectedWorkerIds.length : 0,
+      stock: WORLD ? WORLD.stock : null,
+    };
+    if (extra) {
+      Object.keys(extra).forEach(function (k) { payload[k] = extra[k]; });
+    }
+    console.log('[BUILD-DBG]', payload);
+  }
+
+  function dbgCanAfford(type) {
+    var cost = getBuildCost(type);
+    var ok = canAffordBuild(type);
+    dbg('canAffordBuild', { type: type, cost: cost, ok: ok });
+    return ok;
   }
 
   function clamp(v, min, max) {
@@ -227,6 +259,7 @@
       runTimeMs: 0,
       selectedWorkerIds: [],
     };
+    lastMouseMapPos = { x: WORLD.base.x, y: WORLD.base.y };
 
     typeList.forEach(function (type) {
       var baseNodeCount = rand(6, 10);
@@ -614,20 +647,26 @@
   }
 
   function setPlacementMode(type) {
+    dbg('setPlacementMode:enter', { type: type });
     if (!WORLD) return;
-    if (!canAffordBuild(type)) {
+    if (!dbgCanAfford(type)) {
       commandLogText = 'Not enough resources to start ' + BUILDINGS[type].label + '.';
+      dbg('setPlacementMode:abort:not-affordable', { type: type });
       renderWorld();
       return;
     }
     placement.type = type;
-    placement.x = WORLD.base.x;
-    placement.y = WORLD.base.y - 90;
+    var px = lastMouseMapPos.x || WORLD.base.x;
+    var py = lastMouseMapPos.y || (WORLD.base.y - 90);
+    placement.x = clamp(px, 20, WORLD.width - 20);
+    placement.y = clamp(py, 20, WORLD.height - 20);
     placement.valid = canPlaceBuildingAt(type, placement.x, placement.y);
+    dbg('setPlacementMode:success', { type: type, x: placement.x, y: placement.y, valid: placement.valid });
     renderWorld();
   }
 
   function beginBuildPlacement(type) {
+    dbg('beginBuildPlacement:enter', { type: type });
     if (!WORLD) return;
     // Always clear transient interaction states so stale drag/select modes
     // never block starting a new preview.
@@ -637,6 +676,7 @@
     WORLD.selectedWorkerIds = [];
     placement.type = null;
     placement.valid = false;
+    dbg('beginBuildPlacement:after-reset', { type: type });
     setPlacementMode(type);
   }
 
@@ -767,6 +807,9 @@
     els.buildHouseBtn.classList.toggle('build-unaffordable', !houseOK);
     els.buildDepotBtn.classList.toggle('build-unaffordable', !depotOK);
     els.buildTempleBtn.classList.toggle('build-unaffordable', !templeOK);
+    els.buildHouseBtn.classList.toggle('build-active', placement.type === 'house');
+    els.buildDepotBtn.classList.toggle('build-active', placement.type === 'depot');
+    els.buildTempleBtn.classList.toggle('build-active', placement.type === 'temple');
     els.buildHouseBtn.innerHTML = 'House (' + token(houseCost.wood, 'wood') + ' / ' + token(houseCost.stone, 'stone') + ')';
     els.buildDepotBtn.innerHTML = 'Resource Depot (' + token(depotCost.wood, 'wood') + ' / ' + token(depotCost.stone, 'stone') + ')';
     els.buildTempleBtn.innerHTML = 'Temple (' + token(templeCost.wood, 'wood') + ' / ' + token(templeCost.stone, 'stone') + ')';
@@ -780,6 +823,11 @@
   function renderBuildPreview() {
     var preview = els.buildPreview;
     if (!WORLD || !placement.type) {
+      var hiddenState = 'hidden|' + String(!!WORLD) + '|' + String(placement.type);
+      if (hiddenState !== lastPreviewDebugState) {
+        dbg('renderBuildPreview:hidden', { hasWorld: !!WORLD, placementType: placement.type });
+        lastPreviewDebugState = hiddenState;
+      }
       preview.classList.add('hidden');
       return;
     }
@@ -790,6 +838,11 @@
     preview.textContent = cfg.label;
     preview.style.left = placement.x + 'px';
     preview.style.top = placement.y + 'px';
+    var shownState = 'shown|' + placement.type + '|' + String(placement.valid);
+    if (shownState !== lastPreviewDebugState) {
+      dbg('renderBuildPreview:shown', { type: placement.type, valid: placement.valid });
+      lastPreviewDebugState = shownState;
+    }
   }
 
   function buildDepot() {
@@ -815,12 +868,24 @@
     });
 
     els.backToGlobalBtn.addEventListener('click', stopWorld);
-    els.buildHouseBtn.addEventListener('click', function () {
+    els.buildHouseBtn.addEventListener('mousedown', function (ev) {
+      ev.preventDefault();
+      ev.stopPropagation();
+      dbg('btn:house:click');
       if (!WORLD) return;
       beginBuildPlacement('house');
     });
-    els.buildDepotBtn.addEventListener('click', buildDepot);
-    els.buildTempleBtn.addEventListener('click', function () {
+    els.buildDepotBtn.addEventListener('mousedown', function (ev) {
+      ev.preventDefault();
+      ev.stopPropagation();
+      dbg('btn:depot:click');
+      if (!WORLD) return;
+      beginBuildPlacement('depot');
+    });
+    els.buildTempleBtn.addEventListener('mousedown', function (ev) {
+      ev.preventDefault();
+      ev.stopPropagation();
+      dbg('btn:temple:click');
       if (!WORLD) return;
       beginBuildPlacement('temple');
     });
@@ -828,6 +893,8 @@
     els.map.addEventListener('mousemove', function (ev) {
       if (!WORLD) return;
       var p = mapPointFromMouse(ev);
+      lastMouseMapPos.x = p.x;
+      lastMouseMapPos.y = p.y;
       if (placement.type) {
         placement.x = p.x;
         placement.y = p.y;
@@ -846,6 +913,7 @@
     });
 
     els.map.addEventListener('mousedown', function (ev) {
+      dbg('map:mousedown', { button: ev.button, target: ev.target && ev.target.className });
       if (!WORLD || placement.type || ev.button !== 0) return;
       var p = mapPointFromMouse(ev);
       drag.active = true;
@@ -870,6 +938,7 @@
     });
 
     els.map.addEventListener('click', function (ev) {
+      dbg('map:click', { target: ev.target && ev.target.className });
       if (!WORLD) return;
       if (suppressClickOnce) {
         suppressClickOnce = false;
