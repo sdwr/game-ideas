@@ -581,11 +581,17 @@
     return WORLD.structures.filter(function (s) { return s.type === type; }).length;
   }
 
+  function placedCountByType(type) {
+    var complete = WORLD.structures.filter(function (s) { return s.type === type; }).length;
+    var building = WORLD.constructions.filter(function (c) { return c.type === type; }).length;
+    return complete + building;
+  }
+
   function getBuildCost(type) {
     var cfg = BUILDINGS[type];
     if (cfg.cost) return cfg.cost;
-    var builtCount = structureCountByType(type);
-    var mult = Math.pow(cfg.scaling || 1, builtCount);
+    var placedCount = placedCountByType(type);
+    var mult = Math.pow(cfg.scaling || 1, placedCount);
     return {
       wood: Math.max(1, Math.round(cfg.baseCost.wood * mult)),
       stone: Math.max(1, Math.round(cfg.baseCost.stone * mult)),
@@ -619,6 +625,19 @@
     placement.y = WORLD.base.y - 90;
     placement.valid = canPlaceBuildingAt(type, placement.x, placement.y);
     renderWorld();
+  }
+
+  function beginBuildPlacement(type) {
+    if (!WORLD) return;
+    // Always clear transient interaction states so stale drag/select modes
+    // never block starting a new preview.
+    drag.active = false;
+    drag.moved = false;
+    suppressClickOnce = false;
+    WORLD.selectedWorkerIds = [];
+    placement.type = null;
+    placement.valid = false;
+    setPlacementMode(type);
   }
 
   function cancelPlacement() {
@@ -798,12 +817,12 @@
     els.backToGlobalBtn.addEventListener('click', stopWorld);
     els.buildHouseBtn.addEventListener('click', function () {
       if (!WORLD) return;
-      setPlacementMode('house');
+      beginBuildPlacement('house');
     });
     els.buildDepotBtn.addEventListener('click', buildDepot);
     els.buildTempleBtn.addEventListener('click', function () {
       if (!WORLD) return;
-      setPlacementMode('temple');
+      beginBuildPlacement('temple');
     });
 
     els.map.addEventListener('mousemove', function (ev) {
