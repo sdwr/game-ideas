@@ -1,0 +1,70 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>RTS Portal-Hopper</title>
+  <link rel="stylesheet" href="style.css" />
+</head>
+<body>
+  <div class="app">
+    <header class="topbar">
+      <h1>RTS Portal-Hopper</h1>
+      <p class="muted">Prototype loop: Global Screen -> World Screen -> Global Screen</p>
+    </header>
+
+    <main>
+      <section id="global-screen" class="screen">
+        <div class="panel">
+          <h2>Global Screen</h2>
+          <p id="player-progress">Level 1 - 0 / 1000 XP</p>
+          <p>Upgrade points: <strong id="upgrade-points">0</strong></p>
+          <div class="upgrade-list">
+            <button id="buy-worker-upgrade-btn" type="button">Global +1 Starting Worker (1 UP)</button>
+          </div>
+        </div>
+
+        <div class="panel">
+          <h3>Open Portal</h3>
+          <p class="muted">Choose a world tier and jump into a single-screen RTS island.</p>
+          <div class="portal-actions">
+            <button type="button" data-open-tier="1">Open Tier 1 Portal</button>
+            <button type="button" data-open-tier="2">Open Tier 2 Portal</button>
+            <button type="button" data-open-tier="3">Open Tier 3 Portal</button>
+          </div>
+        </div>
+      </section>
+
+      <section id="world-screen" class="screen hidden">
+        <div class="world-top">
+          <button id="back-to-global-btn" type="button">Return To Global</button>
+        </div>
+
+        <div class="world-layout">
+          <aside class="side-panel">
+            <h3>Map Resources</h3>
+            <ul id="resource-assignment-list"></ul>
+            <p class="muted">Drag-select workers, then click a resource node to assign.</p>
+          </aside>
+
+          <div id="map" class="map">
+            <div id="base" class="entity base">Base</div>
+            <div id="entity-layer"></div>
+            <div id="build-preview" class="entity build-preview hidden"></div>
+            <div id="selection-box" class="selection-box hidden"></div>
+          </div>
+        </div>
+        <div class="building-menu">
+          <strong>Build:</strong>
+          <button id="build-house-btn" type="button">House (40W / 20S)</button>
+          <button id="build-depot-btn" type="button">Resource Depot (60W / 40S)</button>
+          <button id="build-temple-btn" type="button">Temple (120W / 120S)</button>
+          <span id="build-hint" class="muted">Click a build button, then place on the map. Press X to cancel.</span>
+        </div>
+      </section>
+    </main>
+  </div>
+
+  <script src="main.js"></script>
+</body>
+</html>

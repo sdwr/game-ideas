@@ -1,0 +1,280 @@
+:root {
+  --bg: #111822;
+  --panel: #1b2535;
+  --line: #32445f;
+  --text: #e8eef9;
+  --muted: #9cb0cc;
+}
+
+* {
+  box-sizing: border-box;
+}
+
+body {
+  margin: 0;
+  font-family: Inter, system-ui, -apple-system, Segoe UI, Roboto, sans-serif;
+  background: var(--bg);
+  color: var(--text);
+}
+
+.app {
+  max-width: 1200px;
+  margin: 0 auto;
+  padding: 12px;
+}
+
+.topbar h1 {
+  margin: 0 0 4px;
+}
+
+.muted {
+  color: var(--muted);
+}
+
+.hidden {
+  display: none !important;
+}
+
+.screen {
+  margin-top: 10px;
+}
+
+.panel {
+  background: var(--panel);
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  padding: 12px;
+  margin-bottom: 12px;
+}
+
+.upgrade-list,
+.portal-actions {
+  display: flex;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+
+button {
+  background: #38599a;
+  border: 1px solid #5d80c8;
+  color: #fff;
+  border-radius: 6px;
+  padding: 6px 10px;
+  font: inherit;
+  cursor: pointer;
+}
+
+button .cost-token {
+  color: var(--muted);
+}
+
+button .cost-token.ok {
+  color: #ffffff;
+}
+
+button.build-unaffordable {
+  background: #2f4577;
+  border-color: #50689d;
+  color: #bcc9e4;
+}
+
+button:disabled {
+  cursor: not-allowed;
+  background: #2f4577;
+  border-color: #50689d;
+  color: #bcc9e4;
+}
+
+.world-top {
+  display: flex;
+  justify-content: space-between;
+  gap: 8px;
+  align-items: center;
+  margin-bottom: 8px;
+}
+
+.world-layout {
+  display: grid;
+  grid-template-columns: 260px 1fr;
+  gap: 10px;
+}
+
+.side-panel {
+  background: var(--panel);
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  padding: 10px;
+}
+
+#resource-assignment-list {
+  list-style: none;
+  padding: 0;
+  margin: 0;
+}
+
+#resource-assignment-list li {
+  border-bottom: 1px solid var(--line);
+  padding: 6px 0;
+}
+
+.assign-line {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  flex-wrap: wrap;
+}
+
+.assign-controls {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.mini {
+  width: 26px;
+  height: 26px;
+  padding: 0;
+}
+
+.map {
+  position: relative;
+  min-height: 560px;
+  background: radial-gradient(circle at 50% 55%, #355f43 0%, #264f38 50%, #1b3f2b 72%, #133123 100%);
+  border: 2px solid #4f7a63;
+  border-radius: 12px;
+  overflow: hidden;
+}
+
+#entity-layer {
+  position: absolute;
+  inset: 0;
+}
+
+.selection-box {
+  position: absolute;
+  border: 1px solid #9fc2ff;
+  background: rgba(123, 162, 255, 0.18);
+  pointer-events: none;
+  z-index: 20;
+}
+
+.entity {
+  position: absolute;
+  transform: translate(-50%, -50%);
+  user-select: none;
+  pointer-events: none;
+}
+
+.base {
+  width: 70px;
+  height: 70px;
+  border-radius: 12px;
+  background: #7d5f45;
+  border: 2px solid #c69d72;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 0.75rem;
+}
+
+.depot {
+  width: 48px;
+  height: 48px;
+  border-radius: 10px;
+  background: #6f7d95;
+  border: 2px solid #b8c8df;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 0.65rem;
+}
+
+.house {
+  width: 40px;
+  height: 40px;
+  border-radius: 8px;
+  background: #8a6a4e;
+  border: 2px solid #d0aa81;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 0.62rem;
+}
+
+.temple {
+  width: 56px;
+  height: 56px;
+  border-radius: 10px;
+  background: #6f5f7f;
+  border: 2px solid #bea9d3;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 0.62rem;
+}
+
+.worker {
+  width: 14px;
+  height: 14px;
+  border-radius: 50%;
+  background: #f7e27e;
+  border: 2px solid #2f2f2f;
+}
+
+.worker.worker-selected {
+  box-shadow: 0 0 0 3px rgba(135, 190, 255, 0.9);
+}
+
+.worker.carrying {
+  background: #ffbf69;
+}
+
+.node {
+  width: 30px;
+  height: 30px;
+  border-radius: 50%;
+  border: 2px solid #111;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 0.62rem;
+  font-weight: 600;
+}
+
+.node.wood { background: #5f8b4e; }
+.node.stone { background: #8f96a3; }
+.node.food { background: #7fa347; }
+.node.gold { background: #d3ae2d; }
+
+.node,
+.base,
+.depot,
+.house,
+.temple {
+  pointer-events: auto;
+  cursor: pointer;
+}
+
+.building-menu {
+  margin-top: 8px;
+  background: var(--panel);
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  padding: 10px;
+  display: flex;
+  gap: 10px;
+  align-items: center;
+  flex-wrap: wrap;
+}
+
+.build-preview {
+  opacity: 0.4;
+  pointer-events: none;
+  z-index: 5;
+}
+
+.build-preview.invalid {
+  background: #b23a3a !important;
+  border-color: #ff6a6a !important;
+}
+
