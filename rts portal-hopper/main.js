@@ -185,25 +185,52 @@
   function generateNodesForType(type, count, totalAmount) {
     var amounts = splitTotalAmount(totalAmount, count, 24);
     var centers = [];
+    var indexOrder = [];
+    var stoneLobeA = { x: WORLD.width * 0.22, y: WORLD.height * 0.28 };
+    var stoneLobeB = { x: WORLD.width * 0.78, y: WORLD.height * 0.36 };
+    var stoneLobeAvoidRadius = 115;
     if (type === 'stone') {
-      centers.push({ x: WORLD.width * 0.24, y: WORLD.height * 0.34 });
-      centers.push({ x: WORLD.width * 0.34, y: WORLD.height * 0.44 });
+      // Force two clearly separated lobes.
+      centers.push(stoneLobeA);
+      centers.push(stoneLobeB);
+      var half = Math.floor(count / 2);
+      for (var iA = 0; iA < half; iA += 1) indexOrder.push(0);
+      for (var iB = half; iB < count; iB += 1) indexOrder.push(1);
     } else if (type === 'wood') {
-      centers.push({ x: WORLD.width * 0.74, y: WORLD.height * 0.33 });
+      // Wood should be broadly scattered, not clustered.
+      centers.push({ x: WORLD.width * 0.5, y: WORLD.height * 0.45 });
+      for (var iW = 0; iW < count; iW += 1) indexOrder.push(0);
     } else if (type === 'food') {
       centers.push({ x: WORLD.width * 0.62, y: WORLD.height * 0.56 });
+      for (var iF = 0; iF < count; iF += 1) indexOrder.push(0);
     } else {
       centers.push({ x: WORLD.width * 0.52, y: WORLD.height * 0.24 });
+      for (var iG = 0; iG < count; iG += 1) indexOrder.push(0);
     }
 
-    var spread = type === 'stone' ? 95 : type === 'wood' ? 150 : 120;
+    var spread = type === 'stone' ? 55 : type === 'wood' ? Math.max(WORLD.width, WORLD.height) : 120;
     for (var i = 0; i < count; i += 1) {
-      var c = centers[i % centers.length];
+      var c = centers[indexOrder[i] || 0];
       var pos = null;
       if (type === 'stone') {
         pos = tryPlaceNodeWithRule(WORLD.nodes, c, spread, 70, function (x, y) {
           return distance({ x: x, y: y }, WORLD.base) >= BASE_STONE_MIN_DISTANCE;
         });
+      } else if (type === 'wood') {
+        // For wood, pick random points across the full map while preserving no-overlap.
+        pos = tryPlaceNodeWithRule(
+          WORLD.nodes,
+          { x: rand(70, WORLD.width - 70), y: rand(60, WORLD.height - 120) },
+          0,
+          120,
+          function (x, y) {
+            return (
+              distance({ x: x, y: y }, WORLD.base) >= BASE_STONE_MIN_DISTANCE &&
+              distance({ x: x, y: y }, stoneLobeA) >= stoneLobeAvoidRadius &&
+              distance({ x: x, y: y }, stoneLobeB) >= stoneLobeAvoidRadius
+            );
+          }
+        );
       } else {
         pos = tryPlaceNode(WORLD.nodes, c, spread, 60);
       }
@@ -216,6 +243,20 @@
             120,
             function (x, y) {
               return distance({ x: x, y: y }, WORLD.base) >= BASE_STONE_MIN_DISTANCE;
+            }
+          )
+          : type === 'wood'
+          ? tryPlaceNodeWithRule(
+            WORLD.nodes,
+            { x: WORLD.width * 0.5, y: WORLD.height * 0.45 },
+            Math.max(WORLD.width, WORLD.height),
+            180,
+            function (x, y) {
+              return (
+                distance({ x: x, y: y }, WORLD.base) >= BASE_STONE_MIN_DISTANCE &&
+                distance({ x: x, y: y }, stoneLobeA) >= stoneLobeAvoidRadius &&
+                distance({ x: x, y: y }, stoneLobeB) >= stoneLobeAvoidRadius
+              );
             }
           )
           : tryPlaceNode(
@@ -288,9 +329,52 @@
       });
     }
 
+    assignDefaultWorkerTargets();
+
     buildAssignmentMenu();
     renderWorld();
     startTick();
+  }
+
+  function nearestNodeFromPoint(point, type) {
+    var candidates = WORLD.nodes.filter(function (n) {
+      return n.type === type && n.amount > 0;
+    });
+    if (!candidates.length) return null;
+    var best = candidates[0];
+    var bestDist = distance(point, best);
+    for (var i = 1; i < candidates.length; i += 1) {
+      var d = distance(point, candidates[i]);
+      if (d < bestDist) {
+        bestDist = d;
+        best = candidates[i];
+      }
+    }
+    return best;
+  }
+
+  function assignWorkerToNode(worker, node) {
+    if (!worker || !node) return;
+    worker.targetType = node.type;
+    worker.targetNodeId = node.id;
+    worker.state = 'toNode';
+    worker.gatherMs = 0;
+  }
+
+  function assignDefaultWorkerTargets() {
+    if (!WORLD || !WORLD.workers.length) return;
+    // Default opening orders: 2 workers to closest wood, 1 worker to closest stone.
+    var assigned = 0;
+    for (var i = 0; i < WORLD.workers.length && assigned < 2; i += 1) {
+      var woodNode = nearestNodeFromPoint(WORLD.workers[i], 'wood');
+      if (!woodNode) break;
+      assignWorkerToNode(WORLD.workers[i], woodNode);
+      assigned += 1;
+    }
+    if (WORLD.workers.length >= 3) {
+      var stoneNode = nearestNodeFromPoint(WORLD.workers[2], 'stone');
+      if (stoneNode) assignWorkerToNode(WORLD.workers[2], stoneNode);
+    }
   }
 
   function switchScreen(name) {
