@@ -63,12 +63,7 @@
   };
 
   function xpNeededForLevel(level) {
-    if (level === 1) return 1000;
-    if (level === 2) return 1200;
-    if (level === 3) return 1400;
-    if (level === 4) return 1600;
-    if (level === 5) return 2000;
-    return 2000 + (level - 5) * 200;
+    return 800;
   }
 
   function levelProgress(totalXp) {
@@ -391,13 +386,6 @@
   function stopWorld() {
     if (!WORLD) return;
     stopTick();
-    var xpGain = Math.floor(
-      WORLD.stock.wood * 0.25 +
-      WORLD.stock.stone * 0.25 +
-      WORLD.stock.food * 0.35 +
-      WORLD.stock.gold * 0.6
-    );
-    gainXp(xpGain);
     WORLD = null;
     switchScreen('global');
     renderGlobal();
@@ -981,8 +969,10 @@
 
     els.prestigeBtn.addEventListener('click', function () {
       if (!WORLD) return;
-      var ok = window.confirm('Prestige and return to Global Screen?');
+      var praiseXp = WORLD.praise || 0;
+      var ok = window.confirm('Prestige and return to Global Screen?\\nGain ' + praiseXp + ' XP from praise.');
       if (!ok) return;
+      gainXp(praiseXp);
       stopWorld();
     });
     els.buildHouseBtn.addEventListener('mousedown', function (ev) {
