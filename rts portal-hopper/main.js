@@ -29,7 +29,7 @@
   var lastPreviewDebugState = '';
   var BUILDINGS = {
     house: { baseCost: { wood: 40, stone: 20 }, scaling: 1.8, radius: 24, className: 'house', label: 'House', buildMs: 15000 },
-    depot: { baseCost: { wood: 60, stone: 40 }, scaling: 1.8, radius: 28, className: 'depot', label: 'Depot', buildMs: 10000 },
+    depot: { baseCost: { wood: 40, stone: 20 }, scaling: 1.8, radius: 28, className: 'depot', label: 'Depot', buildMs: 10000 },
     temple: { cost: { wood: 120, stone: 120 }, radius: 34, className: 'temple', label: 'Temple', buildMs: 30000 },
   };
   var placement = {
@@ -319,7 +319,7 @@
         id: 'w-' + w,
         x: WORLD.base.x + rand(-16, 16),
         y: WORLD.base.y + rand(-16, 16),
-        speed: 70,
+        speed: 56,
         state: 'idle',
         targetType: null,
         targetNodeId: null,
@@ -456,8 +456,8 @@
 
   function workerStep(worker, dtMs) {
     var dtSec = dtMs / 1000;
-    var gatherDurationMs = 1200;
-    var carryAmount = 12;
+    var gatherDurationMs = 2100;
+    var carryAmount = 4;
 
     if (!worker.targetType && worker.state === 'idle') return;
 
@@ -720,7 +720,7 @@
       id: 'w-' + Date.now() + '-' + rand(100, 999),
       x: point.x + rand(-12, 12),
       y: point.y + rand(-12, 12),
-      speed: 70,
+      speed: 56,
       state: 'idle',
       targetType: null,
       targetNodeId: null,
