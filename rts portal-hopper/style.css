@@ -104,6 +104,34 @@ button:disabled {
   font-size: 0.85rem;
 }
 
+.praise-wrap {
+  min-width: 300px;
+  flex: 1;
+}
+
+.praise-head {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 4px;
+  font-size: 0.85rem;
+}
+
+.praise-bar {
+  height: 10px;
+  border-radius: 999px;
+  border: 1px solid var(--line);
+  background: #101621;
+  overflow: hidden;
+}
+
+.praise-fill {
+  height: 100%;
+  width: 0%;
+  background: linear-gradient(90deg, #c18cff, #e5b8ff);
+  transition: width 0.2s ease;
+}
+
 .world-layout {
   display: grid;
   grid-template-columns: 260px 1fr;

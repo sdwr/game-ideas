@@ -30,7 +30,7 @@
   var BUILDINGS = {
     house: { baseCost: { wood: 40, stone: 20 }, scaling: 1.8, radius: 24, className: 'house', label: 'House', buildMs: 15000 },
     depot: { baseCost: { wood: 40, stone: 20 }, scaling: 1.8, radius: 28, className: 'depot', label: 'Depot', buildMs: 10000 },
-    temple: { cost: { wood: 120, stone: 120 }, radius: 34, className: 'temple', label: 'Temple', buildMs: 30000 },
+    temple: { baseCost: { wood: 100, stone: 100 }, scaling: 1.8, radius: 34, className: 'temple', label: 'Temple', buildMs: 30000 },
   };
   var placement = {
     type: null,
@@ -46,7 +46,9 @@
     playerProgress: document.getElementById('player-progress'),
     upgradePoints: document.getElementById('upgrade-points'),
     buyWorkerUpgradeBtn: document.getElementById('buy-worker-upgrade-btn'),
-    backToGlobalBtn: document.getElementById('back-to-global-btn'),
+    prestigeBtn: document.getElementById('prestige-btn'),
+    praiseText: document.getElementById('praise-text'),
+    praiseFill: document.getElementById('praise-fill'),
     commandLog: document.getElementById('command-log'),
     map: document.getElementById('map'),
     base: document.getElementById('base'),
@@ -299,6 +301,9 @@
       base: basePoint,
       runTimeMs: 0,
       selectedWorkerIds: [],
+      praise: 0,
+      praiseCap: 2000,
+      templesCompleted: 0,
     };
     lastMouseMapPos = { x: WORLD.base.x, y: WORLD.base.y };
 
@@ -399,6 +404,22 @@
     placement.type = null;
     drag.active = false;
     commandLogText = 'No commands yet.';
+  }
+
+  function templePraiseReward(countCompletedBefore) {
+    if (countCompletedBefore <= 0) return 500;
+    if (countCompletedBefore === 1) return 350;
+    if (countCompletedBefore === 2) return 200;
+    return 150;
+  }
+
+  function applyTemplePraiseReward() {
+    var reward = templePraiseReward(WORLD.templesCompleted);
+    var space = WORLD.praiseCap - WORLD.praise;
+    var gained = Math.max(0, Math.min(space, reward));
+    WORLD.praise += gained;
+    WORLD.templesCompleted += 1;
+    commandLogText = 'Temple complete: +' + gained + ' praise.';
   }
 
   function distance(a, b) {
@@ -535,7 +556,7 @@
         if (c.type === 'house') {
           spawnWorkerNear({ x: c.x, y: c.y });
         } else if (c.type === 'temple') {
-          gainXp(TEMPLE_XP);
+            applyTemplePraiseReward();
         }
       }
     }
@@ -678,6 +699,13 @@
     updateBuildButtons();
     renderBuildPreview();
     renderSelectionBox();
+    if (els.praiseText) {
+      els.praiseText.textContent = WORLD.praise + ' / ' + WORLD.praiseCap;
+    }
+    if (els.praiseFill) {
+      var frac = WORLD.praiseCap > 0 ? WORLD.praise / WORLD.praiseCap : 0;
+      els.praiseFill.style.width = Math.round(frac * 100) + '%';
+    }
     if (els.commandLog) {
       els.commandLog.textContent = commandLogText;
     }
@@ -951,7 +979,12 @@
       renderGlobal();
     });
 
-    els.backToGlobalBtn.addEventListener('click', stopWorld);
+    els.prestigeBtn.addEventListener('click', function () {
+      if (!WORLD) return;
+      var ok = window.confirm('Prestige and return to Global Screen?');
+      if (!ok) return;
+      stopWorld();
+    });
     els.buildHouseBtn.addEventListener('mousedown', function (ev) {
       ev.preventDefault();
       ev.stopPropagation();
