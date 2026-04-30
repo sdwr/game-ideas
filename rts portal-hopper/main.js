@@ -21,6 +21,11 @@
   var TICK_HANDLE = null;
   var TICK_MS = 100;
   var TEMPLE_XP = 1000;
+  var COLLECTOR_PULSE_MS = 4000;
+  var COLLECTOR_CHARGE_MS = 1000;
+  var COLLECTOR_SNAP_MS = 15;
+  var COLLECTOR_RADIUS = 130;
+  var COLLECTOR_PER_NODE = 1;
   var NODE_SEPARATION = 36;
   var BASE_STONE_MIN_DISTANCE = 190;
   var drag = { active: false, moved: false, startX: 0, startY: 0, curX: 0, curY: 0 };
@@ -32,6 +37,7 @@
   var BUILDINGS = {
     house: { baseCost: { wood: 40, stone: 20 }, scaling: 1.8, radius: 24, className: 'house', label: 'House', buildMs: 15000 },
     depot: { baseCost: { wood: 40, stone: 20 }, scaling: 1.8, radius: 28, className: 'depot', label: 'Depot', buildMs: 10000 },
+    collector: { cost: { wood: 40, stone: 20 }, radius: 28, className: 'collector', label: 'Harvester', buildMs: 5000 },
     temple: { baseCost: { wood: 100, stone: 100 }, scaling: 1.8, radius: 34, className: 'temple', label: 'Temple', buildMs: 30000 },
   };
   var WORLD_RESOURCE_TIER_BONUS = [150, 300, 450, 600];
@@ -60,6 +66,7 @@
     entityLayer: document.getElementById('entity-layer'),
     resourceAssignmentList: document.getElementById('resource-assignment-list'),
     buildDepotBtn: document.getElementById('build-depot-btn'),
+    buildCollectorBtn: document.getElementById('build-collector-btn'),
     buildHouseBtn: document.getElementById('build-house-btn'),
     buildTempleBtn: document.getElementById('build-temple-btn'),
     buildHint: document.getElementById('build-hint'),
@@ -323,6 +330,7 @@
       workers: [],
       structures: [],
       constructions: [],
+      effects: [],
       base: basePoint,
       runTimeMs: 0,
       selectedWorkerIds: [],
@@ -414,6 +422,23 @@
       var stoneNode = nearestNodeFromPoint(WORLD.workers[2], 'stone');
       if (stoneNode) assignWorkerToNode(WORLD.workers[2], stoneNode);
     }
+  }
+
+  function countWorkersTargeting(type) {
+    return WORLD.workers.filter(function (w) {
+      return w.targetType === type && w.carryingAmount === 0;
+    }).length;
+  }
+
+  function assignNewWorkerBalanced(worker) {
+    if (!WORLD || !worker) return;
+    var woodAssigned = countWorkersTargeting('wood');
+    var stoneAssigned = countWorkersTargeting('stone');
+    var preferredType = woodAssigned <= stoneAssigned ? 'wood' : 'stone';
+    var fallbackType = preferredType === 'wood' ? 'stone' : 'wood';
+    var target = nearestNodeFromPoint(worker, preferredType) || nearestNodeFromPoint(worker, fallbackType);
+    if (!target) return;
+    assignWorkerToNode(worker, target);
   }
 
   function switchScreen(name) {
@@ -566,6 +591,7 @@
     if (!WORLD) return;
     WORLD.runTimeMs += dtMs;
     tickConstructions(dtMs);
+    tickCollectors(dtMs);
     WORLD.workers.forEach(function (worker) {
       workerStep(worker, dtMs);
     });
@@ -579,7 +605,7 @@
       var cfg = BUILDINGS[c.type];
       if (c.elapsedMs >= cfg.buildMs) {
         WORLD.constructions.splice(i, 1);
-        WORLD.structures.push({ type: c.type, x: c.x, y: c.y });
+        WORLD.structures.push({ type: c.type, x: c.x, y: c.y, pulseMs: 0, snapMs: 0 });
         if (c.type === 'house') {
           spawnWorkerNear({ x: c.x, y: c.y });
         } else if (c.type === 'temple') {
@@ -587,6 +613,38 @@
         }
       }
     }
+  }
+
+  function tickCollectors(dtMs) {
+    WORLD.effects = WORLD.effects.filter(function (fx) {
+      fx.elapsedMs += dtMs;
+      return fx.elapsedMs < fx.durationMs;
+    });
+    WORLD.structures.forEach(function (s) {
+      if (s.type !== 'collector') return;
+      if (typeof s.pulseMs !== 'number') s.pulseMs = 0;
+      if (typeof s.snapMs !== 'number') s.snapMs = 0;
+      s.pulseMs += dtMs;
+      if (s.snapMs > 0) s.snapMs = Math.max(0, s.snapMs - dtMs);
+      if (s.pulseMs < COLLECTOR_PULSE_MS) return;
+      s.pulseMs = 0;
+      s.snapMs = 460;
+      WORLD.effects.push({
+        type: 'collectorSnap',
+        x: s.x,
+        y: s.y,
+        radius: COLLECTOR_RADIUS,
+        elapsedMs: 0,
+        durationMs: COLLECTOR_SNAP_MS,
+      });
+      WORLD.nodes.forEach(function (n) {
+        if (n.amount <= 0) return;
+        if (distance(s, n) > COLLECTOR_RADIUS) return;
+        var gain = Math.min(COLLECTOR_PER_NODE, n.amount);
+        n.amount -= gain;
+        WORLD.stock[n.type] += gain;
+      });
+    });
   }
 
   function startTick() {
@@ -657,11 +715,37 @@
     WORLD.structures.forEach(function (structure, idx) {
       var d = document.createElement('div');
       d.className = 'entity ' + BUILDINGS[structure.type].className;
+      if (structure.type === 'collector' && structure.snapMs > 0) d.classList.add('collector-snap');
       d.style.left = structure.x + 'px';
       d.style.top = structure.y + 'px';
       d.textContent = BUILDINGS[structure.type].label;
       d.setAttribute('data-structure-idx', String(idx));
       els.entityLayer.appendChild(d);
+      if (structure.type === 'collector') {
+        var chargeStartMs = COLLECTOR_PULSE_MS - COLLECTOR_CHARGE_MS;
+        var chargeFrac = clamp((structure.pulseMs - chargeStartMs) / COLLECTOR_CHARGE_MS, 0, 1);
+        if (chargeFrac > 0) {
+          var chargeRing = document.createElement('div');
+          chargeRing.className = 'entity collector-charge-ring';
+          chargeRing.style.left = structure.x + 'px';
+          chargeRing.style.top = structure.y + 'px';
+          chargeRing.style.width = (COLLECTOR_RADIUS * 2) + 'px';
+          chargeRing.style.height = (COLLECTOR_RADIUS * 2) + 'px';
+          chargeRing.style.setProperty('--collector-charge-scale', String(chargeFrac));
+          els.entityLayer.appendChild(chargeRing);
+        }
+      }
+    });
+
+    WORLD.effects.forEach(function (fx) {
+      if (fx.type !== 'collectorSnap') return;
+      var ring = document.createElement('div');
+      ring.className = 'entity collector-snap-ring';
+      ring.style.left = fx.x + 'px';
+      ring.style.top = fx.y + 'px';
+      ring.style.width = (fx.radius * 2) + 'px';
+      ring.style.height = (fx.radius * 2) + 'px';
+      els.entityLayer.appendChild(ring);
     });
 
     WORLD.constructions.forEach(function (c) {
@@ -791,7 +875,7 @@
   }
 
   function spawnWorkerNear(point) {
-    WORLD.workers.push({
+    var worker = {
       id: 'w-' + Date.now() + '-' + rand(100, 999),
       x: point.x + rand(-12, 12),
       y: point.y + rand(-12, 12),
@@ -802,7 +886,9 @@
       gatherMs: 0,
       carryingType: null,
       carryingAmount: 0,
-    });
+    };
+    WORLD.workers.push(worker);
+    assignNewWorkerBalanced(worker);
   }
 
   function setPlacementMode(type) {
@@ -955,27 +1041,37 @@
 
     var houseCost = getBuildCost('house');
     var depotCost = getBuildCost('depot');
+    var collectorCost = getBuildCost('collector');
     var templeCost = getBuildCost('temple');
     var houseOK = canAffordBuild('house');
     var depotOK = canAffordBuild('depot');
+    var collectorOK = canAffordBuild('collector');
     var templeOK = canAffordBuild('temple');
     // Keep buttons clickable; preview/placement remains affordability-gated.
     els.buildHouseBtn.disabled = false;
     els.buildDepotBtn.disabled = false;
+    els.buildCollectorBtn.disabled = false;
     els.buildTempleBtn.disabled = false;
     els.buildHouseBtn.classList.toggle('build-unaffordable', !houseOK);
     els.buildDepotBtn.classList.toggle('build-unaffordable', !depotOK);
+    els.buildCollectorBtn.classList.toggle('build-unaffordable', !collectorOK);
     els.buildTempleBtn.classList.toggle('build-unaffordable', !templeOK);
     els.buildHouseBtn.classList.toggle('build-active', placement.type === 'house');
     els.buildDepotBtn.classList.toggle('build-active', placement.type === 'depot');
+    els.buildCollectorBtn.classList.toggle('build-active', placement.type === 'collector');
     els.buildTempleBtn.classList.toggle('build-active', placement.type === 'temple');
     els.buildHouseBtn.innerHTML = 'House (' + token(houseCost.wood, 'wood') + ' / ' + token(houseCost.stone, 'stone') + ')';
     els.buildDepotBtn.innerHTML = 'Resource Depot (' + token(depotCost.wood, 'wood') + ' / ' + token(depotCost.stone, 'stone') + ')';
+    els.buildCollectorBtn.innerHTML = 'Harvester (' + token(collectorCost.wood, 'wood') + ' / ' + token(collectorCost.stone, 'stone') + ')';
     els.buildTempleBtn.innerHTML = 'Temple (' + token(templeCost.wood, 'wood') + ' / ' + token(templeCost.stone, 'stone') + ')';
     if (!placement.type) {
       els.buildHint.textContent = 'Click a build button, then place on the map. Press X to cancel.';
     } else {
-      els.buildHint.textContent = 'Placing ' + BUILDINGS[placement.type].label + ' - click map to confirm, X to cancel.';
+      if (placement.type === 'collector') {
+        els.buildHint.textContent = 'Placing Harvester - effect: +' + COLLECTOR_PER_NODE + ' per nearby node every 4s (radius ' + COLLECTOR_RADIUS + '). Click map to confirm, X to cancel.';
+      } else {
+        els.buildHint.textContent = 'Placing ' + BUILDINGS[placement.type].label + ' - click map to confirm, X to cancel.';
+      }
     }
   }
 
@@ -997,6 +1093,16 @@
     preview.textContent = cfg.label;
     preview.style.left = placement.x + 'px';
     preview.style.top = placement.y + 'px';
+    if (placement.type === 'collector') {
+      var previewRing = document.createElement('div');
+      previewRing.className = 'entity collector-preview-ring';
+      if (!placement.valid) previewRing.classList.add('invalid');
+      previewRing.style.left = placement.x + 'px';
+      previewRing.style.top = placement.y + 'px';
+      previewRing.style.width = (COLLECTOR_RADIUS * 2) + 'px';
+      previewRing.style.height = (COLLECTOR_RADIUS * 2) + 'px';
+      els.entityLayer.appendChild(previewRing);
+    }
     var shownState = 'shown|' + placement.type + '|' + String(placement.valid);
     if (shownState !== lastPreviewDebugState) {
       dbg('renderBuildPreview:shown', { type: placement.type, valid: placement.valid });
@@ -1065,6 +1171,13 @@
       dbg('btn:depot:click');
       if (!WORLD) return;
       beginBuildPlacement('depot');
+    });
+    els.buildCollectorBtn.addEventListener('mousedown', function (ev) {
+      ev.preventDefault();
+      ev.stopPropagation();
+      dbg('btn:collector:click');
+      if (!WORLD) return;
+      beginBuildPlacement('collector');
     });
     els.buildTempleBtn.addEventListener('mousedown', function (ev) {
       ev.preventDefault();
