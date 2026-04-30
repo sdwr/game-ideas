@@ -13,6 +13,8 @@
     upgradePoints: 0,
     level: 1,
     workerUpgradeTier: 0,
+    worldWoodTier: 0,
+    worldStoneTier: 0,
   };
 
   var WORLD = null;
@@ -32,6 +34,7 @@
     depot: { baseCost: { wood: 40, stone: 20 }, scaling: 1.8, radius: 28, className: 'depot', label: 'Depot', buildMs: 10000 },
     temple: { baseCost: { wood: 100, stone: 100 }, scaling: 1.8, radius: 34, className: 'temple', label: 'Temple', buildMs: 30000 },
   };
+  var WORLD_RESOURCE_TIER_BONUS = [150, 300, 450, 600];
   var placement = {
     type: null,
     x: 0,
@@ -46,6 +49,8 @@
     playerProgress: document.getElementById('player-progress'),
     upgradePoints: document.getElementById('upgrade-points'),
     buyWorkerUpgradeBtn: document.getElementById('buy-worker-upgrade-btn'),
+    buyWoodWorldUpgradeBtn: document.getElementById('buy-wood-world-upgrade-btn'),
+    buyStoneWorldUpgradeBtn: document.getElementById('buy-stone-world-upgrade-btn'),
     prestigeBtn: document.getElementById('prestige-btn'),
     praiseText: document.getElementById('praise-text'),
     praiseFill: document.getElementById('praise-fill'),
@@ -63,7 +68,7 @@
   };
 
   function xpNeededForLevel(level) {
-    return 800;
+    return 300 + level * 100; // 400 / 500 / 600 / 700 ...
   }
 
   function levelProgress(totalXp) {
@@ -152,6 +157,31 @@
     return out;
   }
 
+  function splitTotalAmountLowVariance(total, count, minEach, varianceRatio) {
+    var base = total / count;
+    var out = [];
+    var remaining = total;
+    for (var i = 0; i < count; i += 1) {
+      var slotsLeft = count - i;
+      if (slotsLeft === 1) {
+        out.push(Math.max(minEach, Math.round(remaining)));
+        break;
+      }
+      var jitter = base * varianceRatio;
+      var minV = Math.max(minEach, Math.round(base - jitter));
+      var maxV = Math.max(minV, Math.round(base + jitter));
+      var v = rand(minV, maxV);
+      var maxAllowed = Math.round(remaining - minEach * (slotsLeft - 1));
+      v = Math.min(v, maxAllowed);
+      out.push(v);
+      remaining -= v;
+    }
+    var sum = out.reduce(function (s, a) { return s + a; }, 0);
+    var delta = total - sum;
+    if (out.length) out[out.length - 1] += delta;
+    return out;
+  }
+
   function nonOverlappingPosition(existingNodes, x, y) {
     for (var i = 0; i < existingNodes.length; i += 1) {
       if (distance({ x: x, y: y }, existingNodes[i]) < NODE_SEPARATION) return false;
@@ -180,7 +210,7 @@
   }
 
   function generateNodesForType(type, count, totalAmount) {
-    var amounts = splitTotalAmount(totalAmount, count, 24);
+    var amounts = splitTotalAmountLowVariance(totalAmount, count, 24, 0.15);
     var centers = [];
     var indexOrder = [];
     var stoneLobeA = { x: WORLD.width * 0.22, y: WORLD.height * 0.28 };
@@ -309,8 +339,17 @@
         tripledCount = Math.max(3, Math.round(tripledCount * 0.6));
       } else if (type === 'wood') {
         tripledCount = Math.max(3, Math.round(tripledCount * 1.2));
+        tripledCount = Math.max(3, Math.round(tripledCount * 0.8));
       }
       var total = randomAmountTotal(baseNodeCount);
+      if (type === 'wood') {
+        var woodBonus = PLAYER.worldWoodTier > 0 ? WORLD_RESOURCE_TIER_BONUS[PLAYER.worldWoodTier - 1] : 0;
+        total = 600 + woodBonus;
+      }
+      if (type === 'stone') {
+        var stoneBonus = PLAYER.worldStoneTier > 0 ? WORLD_RESOURCE_TIER_BONUS[PLAYER.worldStoneTier - 1] : 0;
+        total = 500 + stoneBonus;
+      }
       generateNodesForType(type, tripledCount, total);
     });
 
@@ -570,13 +609,33 @@
     els.playerProgress.textContent = 'Level ' + prog.level + ' - ' + prog.current + ' / ' + prog.needed + ' XP';
     els.upgradePoints.textContent = String(PLAYER.upgradePoints);
 
-    var nextCost = 1 + PLAYER.workerUpgradeTier;
-    if (PLAYER.workerUpgradeTier >= 5) {
+    var workerNextCost = 1 + PLAYER.workerUpgradeTier;
+    if (PLAYER.workerUpgradeTier >= 4) {
       els.buyWorkerUpgradeBtn.disabled = true;
       els.buyWorkerUpgradeBtn.textContent = 'Global +1 Starting Worker (MAX)';
     } else {
-      els.buyWorkerUpgradeBtn.disabled = PLAYER.upgradePoints < nextCost;
-      els.buyWorkerUpgradeBtn.textContent = 'Global +1 Starting Worker (Tier ' + (PLAYER.workerUpgradeTier + 1) + ', ' + nextCost + ' UP)';
+      els.buyWorkerUpgradeBtn.disabled = PLAYER.upgradePoints < workerNextCost;
+      els.buyWorkerUpgradeBtn.textContent = 'Global +1 Starting Worker (Tier ' + (PLAYER.workerUpgradeTier + 1) + ', ' + workerNextCost + ' UP)';
+    }
+
+    var woodCost = 1 + PLAYER.worldWoodTier;
+    if (PLAYER.worldWoodTier >= 4) {
+      els.buyWoodWorldUpgradeBtn.disabled = true;
+      els.buyWoodWorldUpgradeBtn.textContent = 'World Wood +' + WORLD_RESOURCE_TIER_BONUS[3] + ' (MAX)';
+    } else {
+      els.buyWoodWorldUpgradeBtn.disabled = PLAYER.upgradePoints < woodCost;
+      var nextWoodBonus = WORLD_RESOURCE_TIER_BONUS[PLAYER.worldWoodTier];
+      els.buyWoodWorldUpgradeBtn.textContent = 'World Wood +' + nextWoodBonus + ' (Tier ' + (PLAYER.worldWoodTier + 1) + ', ' + woodCost + ' UP)';
+    }
+
+    var stoneCost = 1 + PLAYER.worldStoneTier;
+    if (PLAYER.worldStoneTier >= 4) {
+      els.buyStoneWorldUpgradeBtn.disabled = true;
+      els.buyStoneWorldUpgradeBtn.textContent = 'World Stone +' + WORLD_RESOURCE_TIER_BONUS[3] + ' (MAX)';
+    } else {
+      els.buyStoneWorldUpgradeBtn.disabled = PLAYER.upgradePoints < stoneCost;
+      var nextStoneBonus = WORLD_RESOURCE_TIER_BONUS[PLAYER.worldStoneTier];
+      els.buyStoneWorldUpgradeBtn.textContent = 'World Stone +' + nextStoneBonus + ' (Tier ' + (PLAYER.worldStoneTier + 1) + ', ' + stoneCost + ' UP)';
     }
   }
 
@@ -959,11 +1018,29 @@
     });
 
     els.buyWorkerUpgradeBtn.addEventListener('click', function () {
-      if (PLAYER.workerUpgradeTier >= 5) return;
+      if (PLAYER.workerUpgradeTier >= 4) return;
       var cost = 1 + PLAYER.workerUpgradeTier;
       if (PLAYER.upgradePoints < cost) return;
       PLAYER.upgradePoints -= cost;
       PLAYER.workerUpgradeTier += 1;
+      renderGlobal();
+    });
+
+    els.buyWoodWorldUpgradeBtn.addEventListener('click', function () {
+      if (PLAYER.worldWoodTier >= 4) return;
+      var cost = 1 + PLAYER.worldWoodTier;
+      if (PLAYER.upgradePoints < cost) return;
+      PLAYER.upgradePoints -= cost;
+      PLAYER.worldWoodTier += 1;
+      renderGlobal();
+    });
+
+    els.buyStoneWorldUpgradeBtn.addEventListener('click', function () {
+      if (PLAYER.worldStoneTier >= 4) return;
+      var cost = 1 + PLAYER.worldStoneTier;
+      if (PLAYER.upgradePoints < cost) return;
+      PLAYER.upgradePoints -= cost;
+      PLAYER.worldStoneTier += 1;
       renderGlobal();
     });
 
